@@ -1,0 +1,3408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>시생산 통합 관리 시스템</title>
+<style>
+  /* ===== Theme: clean groupware/intranet ===== */
+  :root {
+    --bg-page: #f7f8fa;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f4f6f8;
+    --bg-hover: #f3f4f6;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text-primary: #111827;
+    --text-secondary: #374151;
+    --text-muted: #6b7280;
+    --text-faint: #9ca3af;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: #eff6ff;
+    --accent-border: #bfdbfe;
+    --brand: #ff7f3f; /* COSMAX accent — used sparingly */
+    --success: #059669;
+    --success-soft: #ecfdf5;
+    --success-border: #a7f3d0;
+    --danger: #dc2626;
+    --danger-soft: #fef2f2;
+    --danger-border: #fecaca;
+    --warning: #d97706;
+    --warning-soft: #fffbeb;
+    --warning-border: #fde68a;
+    --radius-sm: 4px;
+    --radius: 6px;
+    --radius-lg: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif; background: var(--bg-page); color: var(--text-primary); font-size: 14px; -webkit-font-smoothing: antialiased; }
+
+  /* Header — white with subtle bottom border + thin brand stripe on top */
+  .header { background: var(--bg-surface); color: var(--text-primary); padding: 14px 24px; border-bottom: 1px solid var(--border); position: relative; }
+  .header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--brand); }
+  .header-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .header-brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .header-logo { height: 26px; width: auto; flex-shrink: 0; display: block; }
+  .header-divider { width: 1px; height: 26px; background: var(--border); flex-shrink: 0; }
+  .header-title { min-width: 0; }
+  .header h1 { font-size: 18px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
+  .header .sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  @media (max-width: 768px) {
+    .header-logo { height: 22px; }
+    .header-divider { height: 22px; }
+  }
+  @media (max-width: 480px) {
+    .header-divider { display: none; }
+    .header-brand { gap: 8px; }
+  }
+
+  /* Tabs — clean tab bar */
+  .tabs { display: flex; background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 0 24px; }
+  .tab { padding: 12px 18px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 500; color: var(--text-muted); transition: color .15s, border-color .15s; font-size: 13px; }
+  .tab:hover { color: var(--accent); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+  .container { padding: 20px 24px; max-width: 1440px; margin: 0 auto; }
+
+  /* Stat Cards — flat with thin top accent */
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat-card { background: var(--bg-surface); padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); border-top: 2px solid var(--accent); transition: border-color .15s, box-shadow .15s; }
+  .stat-card.total { border-top-color: #475569; }
+  .stat-card.pending { border-top-color: #94a3b8; }
+  .stat-card.progress { border-top-color: var(--accent); }
+  .stat-card.done { border-top-color: var(--success); }
+  .stat-card.issue { border-top-color: var(--danger); }
+  .stat-card .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+  .stat-card .value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+
+  /* Banner — light info box (blue tint) */
+  .banner { background: var(--accent-soft); border: 1px solid var(--accent-border); border-left: 3px solid var(--accent); padding: 12px 14px; border-radius: var(--radius); margin-bottom: 14px; font-size: 13px; color: #1e3a8a; line-height: 1.55; }
+  .banner strong { color: #1e40af; }
+
+  /* Toolbar */
+  .toolbar { background: var(--bg-surface); padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .toolbar input, .toolbar select { padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--bg-surface); color: var(--text-primary); }
+  .toolbar input[type="text"] { flex: 1; min-width: 200px; }
+  .toolbar input:focus, .toolbar select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
+  /* Buttons — flat with borders */
+  .btn { padding: 7px 14px; border: 1px solid transparent; border-radius: var(--radius-sm); cursor: pointer; font-weight: 500; font-size: 13px; transition: background .15s, border-color .15s, color .15s; font-family: inherit; line-height: 1.4; white-space: nowrap; }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn-secondary { background: var(--text-secondary); color: #fff; border-color: var(--text-secondary); }
+  .btn-secondary:hover { background: #1f2937; border-color: #1f2937; }
+  .btn-outline { background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border-strong); }
+  .btn-outline:hover { background: var(--bg-hover); border-color: var(--text-muted); color: var(--text-primary); }
+  .btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .btn-danger:hover { background: #b91c1c; border-color: #b91c1c; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+  /* Table — clean lines */
+  .table-wrap { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--bg-subtle); padding: 10px 12px; text-align: left; font-weight: 600; color: var(--text-secondary); border-bottom: 1px solid var(--border); font-size: 12px; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+  tbody tr:last-child td { border-bottom: none; }
+  tr:hover { background: var(--bg-subtle); }
+
+  /* Badges — flatter with subtle borders */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; border: 1px solid transparent; line-height: 1.5; }
+  .b-pending { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+  .b-progress { background: var(--accent-soft); color: #1d4ed8; border-color: var(--accent-border); }
+  .b-done { background: var(--success-soft); color: #047857; border-color: var(--success-border); }
+  .b-issue { background: var(--danger-soft); color: #b91c1c; border-color: var(--danger-border); }
+  .b-urgent { background: var(--warning-soft); color: #b45309; border-color: var(--warning-border); }
+  .b-normal { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+  .b-critical { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
+  .b-scope-both { background: #f0fdfa; color: #0f766e; border-color: #99f6e4; }
+  .b-scope-bulk { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+  .b-scope-fill { background: #faf5ff; color: #6b21a8; border-color: #e9d5ff; }
+  .b-pilot-scheduled { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+  .b-pilot-inprogress { background: var(--accent-soft); color: #1d4ed8; border-color: var(--accent-border); }
+  .b-pilot-done { background: var(--success-soft); color: #047857; border-color: var(--success-border); }
+  .b-pilot-stopped { background: var(--danger-soft); color: #991b1b; border-color: #fca5a5; }
+
+  .capa-missing { color: var(--danger); font-weight: 700; }
+  .capa-ok { color: var(--success); font-weight: 600; }
+
+  /* Modal — clean white with subtle shadow */
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(17,24,39,0.5); z-index: 1000; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 20px; }
+  .modal-bg.active { display: flex; }
+  .modal { background: var(--bg-surface); border-radius: var(--radius-lg); width: 100%; max-width: 960px; max-height: 92vh; overflow-y: auto; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(17,24,39,0.15); }
+  .modal-header { background: var(--bg-surface); color: var(--text-primary); padding: 14px 20px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  .modal-header h2 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .close-x { background: transparent; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; line-height: 1; padding: 4px 8px; border-radius: var(--radius-sm); }
+  .close-x:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .modal-body { padding: 20px; }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; background: var(--bg-subtle); border-radius: 0 0 var(--radius-lg) var(--radius-lg); position: sticky; bottom: 0; }
+
+  /* Section — softer surface inside modal */
+  .section { background: var(--bg-surface); border: 1px solid var(--border); border-left: 2px solid var(--accent); padding: 14px 16px; margin-bottom: 12px; border-radius: var(--radius-sm); }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .section-title .new-badge { background: var(--danger); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: var(--radius-sm); font-weight: 600; }
+  .section-title .pd-badge { background: var(--accent); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: var(--radius-sm); font-weight: 600; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .form-grid.col-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-grid.col-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .form-row { display: flex; flex-direction: column; }
+  .form-row.full { grid-column: 1 / -1; }
+  .form-row label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; }
+  .form-row label .req { color: var(--danger); }
+  .form-row input, .form-row select, .form-row textarea { padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--bg-surface); color: var(--text-primary); transition: border-color .15s, box-shadow .15s; }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+  .form-row textarea { resize: vertical; min-height: 60px; }
+
+  /* Checkbox group */
+  .check-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; font-size: 12px; }
+  .check-list label { display: flex; align-items: center; gap: 6px; font-weight: 500; cursor: pointer; padding: 4px 6px; border-radius: var(--radius-sm); }
+  .check-list label:hover { background: var(--bg-hover); }
+  /* Attachment list (with file upload per item) */
+  .doc-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; font-size: 12px; }
+  .doc-item { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .doc-item.has-file { border-color: var(--success-border); background: var(--success-soft); }
+  .doc-item-head { display: flex; align-items: center; gap: 6px; font-weight: 500; color: var(--text-primary); }
+  .doc-item-head input[type="checkbox"] { cursor: pointer; }
+  .doc-item-body { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 24px; }
+  .doc-info { flex: 1; min-width: 0; font-size: 11px; color: var(--text-muted); font-weight: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-info .doc-name { color: var(--text-primary); font-weight: 600; }
+  .doc-info .doc-empty { color: var(--text-faint); font-style: italic; }
+  .doc-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .doc-actions button { background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 3px 8px; font-size: 11px; cursor: pointer; font-family: inherit; color: var(--text-secondary); }
+  .doc-actions button:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+  .doc-actions button.doc-remove { color: #b91c1c; border-color: var(--danger-border); }
+  .doc-actions button.doc-remove:hover { background: var(--danger-soft); }
+  @media (max-width: 768px) { .doc-list { grid-template-columns: 1fr; } }
+
+  /* Process flow */
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+  .flow-step { background: var(--bg-surface); padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); border-top: 2px solid var(--accent); }
+  .flow-step .num { display: inline-block; background: var(--accent); color: #fff; width: 22px; height: 22px; border-radius: 50%; text-align: center; line-height: 22px; font-weight: 700; font-size: 11px; }
+  .flow-step h4 { margin: 8px 0 6px; color: var(--text-primary); font-size: 13px; font-weight: 600; }
+  .flow-step p { font-size: 12px; color: var(--text-muted); line-height: 1.55; }
+
+  /* Detail view */
+  .detail-row { display: grid; grid-template-columns: 160px 1fr; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-row .key { font-weight: 500; color: var(--text-secondary); }
+  .detail-row .val { color: var(--text-primary); }
+
+  /* Tabs in modal */
+  .modal-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 14px; flex-wrap: wrap; }
+  .modal-tab { padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 500; color: var(--text-muted); font-size: 13px; }
+  .modal-tab:hover { color: var(--accent); }
+  .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .modal-tab.dimmed { opacity: 0.45; font-style: italic; }
+
+  .hint { font-size: 11px; color: var(--text-faint); margin-top: 3px; }
+  .hint-info { font-size: 12px; color: #1e40af; background: var(--accent-soft); border: 1px solid var(--accent-border); padding: 8px 10px; border-radius: var(--radius-sm); margin-bottom: 10px; }
+
+  /* Bulk criteria table */
+  .bulk-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+  .bulk-table th { background: var(--bg-subtle); padding: 8px; border: 1px solid var(--border); text-align: left; font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+  .bulk-table td { padding: 4px; border: 1px solid var(--border); vertical-align: middle; }
+  .bulk-table td:first-child { font-weight: 600; padding: 8px; background: var(--bg-subtle); white-space: nowrap; color: var(--text-primary); }
+  .bulk-table input { width: 100%; padding: 5px 7px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; }
+
+  /* Photo preview */
+  .photo-preview { margin-top: 8px; }
+  .photo-preview img { max-width: 180px; max-height: 140px; border-radius: var(--radius-sm); display: block; border: 1px solid var(--border); }
+  .photo-preview .btn { margin-top: 6px; }
+  .detail-row .val img.photo-view { max-width: 280px; max-height: 210px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+
+  /* Progress updates */
+  .update-item { background: var(--bg-surface); border: 1px solid var(--border); border-left: 2px solid var(--accent); padding: 10px 12px; margin-bottom: 8px; border-radius: var(--radius-sm); }
+  .update-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+  .update-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .update-stage { background: var(--accent-soft); color: #1d4ed8; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; border: 1px solid var(--accent-border); }
+  .update-date { font-weight: 600; color: var(--text-primary); }
+  .update-note { font-size: 13px; color: var(--text-primary); line-height: 1.55; white-space: pre-wrap; }
+  .update-del { background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 11px; }
+  .update-empty { text-align: center; color: var(--text-faint); padding: 18px; font-size: 12px; background: var(--bg-subtle); border-radius: var(--radius-sm); border: 1px dashed var(--border); }
+
+  /* Focus outline for accessibility */
+  .btn:focus-visible, .tab:focus-visible, .modal-tab:focus-visible,
+  input:focus-visible, select:focus-visible, textarea:focus-visible,
+  .stat-card:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  /* Duplicated-form cleared field highlight */
+  .form-row input.dup-cleared,
+  .form-row select.dup-cleared,
+  .form-row textarea.dup-cleared {
+    background: #fefce8 !important;
+    border-color: #eab308 !important;
+  }
+
+  /* Required-field error highlight */
+  .form-row input.field-error,
+  .form-row select.field-error,
+  .form-row textarea.field-error {
+    border-color: var(--danger) !important;
+    background: var(--danger-soft);
+    box-shadow: 0 0 0 3px rgba(220,38,38,0.1);
+  }
+  .form-row .field-error-msg { color: var(--danger); font-size: 11px; margin-top: 3px; font-weight: 600; }
+
+  /* Required-summary box (top of form) */
+  .req-summary {
+    background: var(--accent-soft); border: 1px solid var(--accent-border); border-radius: var(--radius-sm);
+    padding: 10px 14px; margin-bottom: 14px; font-size: 12px; color: #1e3a8a;
+  }
+  .req-summary strong { color: #1e40af; }
+  .req-summary .req-list { margin-top: 4px; }
+  .req-summary .req-tag {
+    display: inline-block; padding: 2px 8px; margin: 2px 4px 2px 0;
+    background: var(--bg-surface); border: 1px solid var(--accent-border); border-radius: var(--radius-sm);
+    font-size: 11px; font-weight: 600; color: #1e40af;
+  }
+  .req-summary .req-tag.filled { background: var(--success-soft); border-color: var(--success-border); color: #047857; }
+  .req-summary .req-tag.filled::before { content: "✓ "; }
+
+  /* Disabled modal tab (out-of-scope) */
+  .modal-tab.scope-disabled {
+    opacity: 0.4; cursor: not-allowed; text-decoration: line-through;
+  }
+  .form-section.scope-disabled-section input,
+  .form-section.scope-disabled-section select,
+  .form-section.scope-disabled-section textarea { background: var(--bg-subtle); color: var(--text-faint); }
+  .scope-disabled-banner {
+    background: var(--danger-soft); border: 1px solid var(--danger-border); color: #991b1b;
+    padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12px; margin-bottom: 12px; font-weight: 500;
+  }
+
+  /* Stat card clickable */
+  .stat-card.clickable { cursor: pointer; }
+  .stat-card.clickable:hover { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.06); }
+
+  /* Storage usage indicator */
+  .storage-usage {
+    background: var(--bg-surface); padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+    margin-bottom: 14px; font-size: 12px;
+  }
+  .storage-usage .label { display: flex; justify-content: space-between; margin-bottom: 6px; color: var(--text-secondary); }
+  .storage-usage .bar { height: 6px; background: var(--bg-hover); border-radius: 999px; overflow: hidden; }
+  .storage-usage .bar-fill { height: 100%; background: var(--success); transition: width .3s, background .3s; border-radius: 999px; }
+  .storage-usage .bar-fill.warn { background: var(--warning); }
+  .storage-usage .bar-fill.danger { background: var(--danger); }
+
+  /* Column toggle dropdown */
+  .col-toggle-wrap { position: relative; display: inline-block; }
+  .col-toggle-menu {
+    position: absolute; right: 0; top: calc(100% + 4px); background: var(--bg-surface);
+    border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 6px 20px rgba(17,24,39,0.10);
+    padding: 8px 12px; min-width: 180px; z-index: 100; display: none;
+  }
+  .col-toggle-menu.active { display: block; }
+  .col-toggle-menu label {
+    display: flex; align-items: center; gap: 8px; padding: 4px 0;
+    font-size: 12px; cursor: pointer; user-select: none; color: var(--text-primary);
+  }
+  .col-toggle-menu label:hover { color: var(--accent); }
+
+  /* Mobile responsive */
+  @media (max-width: 900px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .form-grid, .form-grid.col-3, .form-grid.col-4 { grid-template-columns: 1fr; }
+    .flow { grid-template-columns: 1fr; }
+    .table-wrap { overflow-x: auto; }
+  }
+  @media (max-width: 768px) {
+    .header { padding: 14px 16px; }
+    .header h1 { font-size: 18px; }
+    .header .sub { font-size: 11px; }
+    .header-top { flex-direction: column; align-items: stretch; gap: 10px; }
+    .header-top > div:last-child { display: flex; flex-wrap: wrap; gap: 6px; }
+    .header-top .btn { padding: 6px 10px; font-size: 12px; }
+    .container { padding: 14px 12px; }
+    .tabs { padding: 0 10px; overflow-x: auto; flex-wrap: nowrap; }
+    .tab { padding: 12px 14px; font-size: 13px; white-space: nowrap; }
+    /* List → card layout */
+    #tab-list .table-wrap table thead { display: none; }
+    #tab-list .table-wrap { background: transparent; border: none; }
+    #tab-list .table-wrap tbody, #tab-list .table-wrap tr,
+    #tab-list .table-wrap td { display: block; width: 100%; }
+    #tab-list .table-wrap tr {
+      background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 12px 14px; margin-bottom: 10px;
+    }
+    #tab-list .table-wrap td {
+      padding: 6px 0; border-bottom: 1px solid var(--border); display: flex;
+      justify-content: space-between; align-items: flex-start; gap: 10px;
+    }
+    #tab-list .table-wrap td:last-child { border-bottom: none; }
+    #tab-list .table-wrap td::before {
+      content: attr(data-label); font-size: 11px; color: var(--text-muted);
+      font-weight: 600; min-width: 80px; flex-shrink: 0;
+    }
+    #tab-list .table-wrap td:not([data-label])::before { content: ''; min-width: 0; }
+    .toolbar { padding: 10px; }
+    .toolbar input[type="text"] { min-width: 140px; }
+    .modal { max-width: 100%; max-height: 96vh; border-radius: 8px; }
+    .modal-body { padding: 14px; }
+    .modal-footer { padding: 12px; flex-wrap: wrap; }
+    .modal-tabs { overflow-x: auto; flex-wrap: nowrap; }
+    .modal-tab { white-space: nowrap; }
+    .detail-row { grid-template-columns: 1fr; gap: 2px; }
+  }
+  @media (max-width: 480px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stat-card { padding: 12px; }
+    .stat-card .value { font-size: 20px; }
+    .header-top .btn-label { display: none; }
+    .header-top .btn { padding: 8px 10px; }
+  }
+  .snackbar {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(16px);
+    background: #1f2937; color: #fff; padding: 12px 16px; border-radius: var(--radius);
+    box-shadow: 0 10px 28px rgba(17,24,39,0.30); display: flex; align-items: center; gap: 12px;
+    font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s;
+    z-index: 9999; max-width: 520px;
+  }
+  .snackbar.active { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .snackbar .snack-msg { flex: 1; }
+  .snackbar .snack-undo {
+    background: transparent; border: 1px solid #6b7280; color: #fff; padding: 4px 10px;
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; font-weight: 500;
+  }
+  .snackbar .snack-undo:hover { background: rgba(255,255,255,0.12); }
+  .snackbar .snack-close {
+    background: transparent; border: none; color: #9ca3af; cursor: pointer; font-size: 16px;
+    padding: 0 4px;
+  }
+  /* Role-based UI toggles */
+  .role-viewer .write-only { display: none !important; }
+  .role-viewer .reviewer-only { display: none !important; }
+  .role-reviewer .viewer-only { display: none !important; }
+  .role-author .reviewer-only { display: none !important; }
+  .role-author .viewer-only { display: none !important; }
+  /* Readonly badge */
+  .readonly-badge {
+    display: inline-block; background: var(--accent-soft); color: #1d4ed8; border: 1px solid var(--accent-border);
+    padding: 2px 8px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; margin-left: 8px;
+  }
+  /* Profile banner */
+  .profile-banner {
+    background: var(--accent-soft); border: 1px solid var(--accent-border); border-left: 3px solid var(--accent);
+    padding: 10px 14px; border-radius: var(--radius-sm);
+    margin-bottom: 14px; font-size: 13px; color: #1e3a8a; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .profile-banner strong { color: #1e40af; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-brand">
+      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQQAAAArCAMAAAHeXDb5AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAD/UExURQAAAAAAAAAAAOAHLukKKt8GK+EPLegIKwAAAOgJLekILAAAAOkILAAAAOkIKwAAAAAAAOoHK+kHKwAAAOgJLAAAAOcIKwAAAAAAAOkIKwAAAAAAAAAAAAAAAAAAAOkILAAAAOgJKwAAAOcILAAAAAAAAAAAAOoILOgHLOcHLwAAAAAAAOoILOkIKwAAAOkHLOgILAAAAN8AH+kILAAAAO8PL+gHLAAAAAAAAAAAAAAAAAAAAAAAAOcHK+oILAAAAP8AAAAAAOkILAAAAAAAAOgILOkILAAAAOoILOQKKekHLAAAAOkILOcHLQAAAOkHKugILOUGLOkKKuIAHOkHK7ABPb8AAABVdFJOUwDDCCEwKRHvEDiPwP4Yl4cgh4CPUChYlzCvnzin6EC/r3BIeLdQ0tZoIL9Y3tfH5v5gCN/PEOdoqQHXcPJA9t8BePfngLf/758xp/fOYP9IzygYCcfqP6k5AAAACXBIWXMAABcRAAAXEQHKJvM/AAAJ2ElEQVRYR+1Zi1YbyRHtKCTIhKewvRgTiYeUxcJ2YhB2DCEYMWpYtAyI5f+/JfdWVff0jIZ1Yp+znBz22sx0V7+qq+vVI/cVnNj7YbzyzuX5B+fOc9RyPFbx0ja8um7i513Pavh/jlI7lwp7ycN5t+Bcw3rw0ZYGHYbCrbt0bp1tcVCb3fC2x/fj7XM8dPpj5z6whP9rOvkSnt4f6EIXJEtJFo+7gySUfCTsuXVUWZde2xlb9gNp4NyZLeEc1rPtfyeG1xMy8e3wH517M4p88zG2mlRf8NEuaO7Y3i5flq6QknOz3p0aWYfheYpHMwc+odDO8/N8IC3HuWoO8Bd9+2eQdEdXWBJSDoHKOg0+unxQhc5l7h4f49Bq6z5vyes78H1yBLy7vLfit6Hj/L77ySrfhFn88TzWKPdlUpZR4JvyzKmEKPDUjGqvjK9tPrY8xnfcpxz2edEAYZw3YIgsSd+kpEPtxXOQw3J+zh36oXYUCFUOLc9pJQTUAXxIyzE0Q2gg6iCexIw3PQJEB22e99yG1vAPSsFiL/bN/yqvX7iLkaOXUki7zQPoBsiFzEDmlBmXd/MlvskD/pr5Jmh0YRxynMM7iCkbjf9lBnoQXYT9VPTuSp0pGIaHBGA60kVISkP9XGZYkxYyEbb3+Hh24P0cHNijwe9AIQ+h1gdG+M3hPy/6jysj758twlESjazfz5paDoB3q55XE926EicUe1kWDGIty6hGhiyLSgqcZa+t5JZtBGzJuflrhBL6atgi0O/zSRUUDFgTRKNbRaWfZdKP9g6QS1g1UCiiADVxDIZunm/zDddBHw7Amp7xfUWzYnehAoFZBE+xGrrk2Jr002WVBeGxx4LSCNZKPMAS0C/p45+7e6zur90/XjnsysgFwt6IPO9qgRslfigODCzAOzbIAYpGVGbBO6y9APdipkz4W3/H95Zf8W6zloVimciCYCG74FzqBsgCl9/DK2GBHMiaKQ8ZhxUzvaIuwCDgYf8sI+y8m2EWsBWUTucjNqMeRpqsy0NoJCyE1gUITAqAKkFQCUHH37daQ/9SKugbECVldSC4e0ahCKPpuj1uIbJQtGJek1akiUr8jhQrDPiPikXvb5lHPxqu/asT93KopvkoGMEn3m3h6kSbfByQgzmPdKPFvOUxsPhu3/tO651/5/wXo/3GeNuhBICODyxsd/ubaXglzuF5rRiwx5hehI9GlskFjcgyucYpXqcVxnErMW6Lf5zzf5TUFRdYZUHiL3AaQyCvOMRRQRCeFNvOQgjK1qEcrOEq0zhZtIXSDtJ3Bkr/UvggPT/tS4YQvGfhjXFhNbC2mmXCiC2MkmUOKFkmQDC1sKIgVDFWQ8Bb7+UidAcuIAW0awT7xGudgPeTM7wZPQINiY1Fnc2Y2aBZuaEQEhZIT8WAHXEIpG1h6hWWfoM3rzNfyHE40BihMYOVMMoCJCJMJbPTpYQdFgoWwBB6W0WwjYSLZxuU4trDIwAfEaw5OmZrAWflkKkFCjcqn0GWwuFJ0lSwgAqyhTTNYLrwz4R073etNIQUinAcEZcFmI4ouAwwSMwE68oOQE1YgBB6PHarKpArJEzeX/lLKczOCgtFOmUoFECO0UoxcyvEhlkhgAb+WDQiihhSl7gVC20NzSKu6Sfl01UZ6UFy+gQ9NWCrcV1wpK/AAkZQfSpikGFFuuJn8KBCvkMOX0wYgYOLnSt6RWCEKTbXFT1gdhxYsAmbJTGwjzUIdi1EXtItwACD2AfBkIrOib2YBxArMZqsi86iDsaCCaHMvDiEEg8z3q+0Rl6vc/RJNO4F5Ma2edwjdKMgXQjFuaMwNWeyfrIu1kQ1shDXKVLH4BDMPRhmWiPcphTyOUEQtTBqXuQg6VWYt64r8wYWwFAUW2AGDkFvRnDcfSlMwdzxOAkIDYiOiIk7DtdI+UXiwrhujzIJLKBd3kAQg/glBTyOXdN+x+NjMg+P9IQxkQu9Yhb589PD4aX3I0YFweEKkgXGiSeFa8+vfECLAZp4NvRXUngyeO79T87dMGkV3G7tu/2/+0Vrfhr42V9Obr2/utHqZHHo/dbLeJX7n9Db6APrSUT9P8EIp38gedpOpyPfXPdJSoTQ3tQ0QDB1uU2wt44khH3iF+VpND+lqU2efrA2/KCThITK0JDPmUjIrZ6gpwNqWpB16mrFrVPxSajFZLs4eLwmrc4sIsOoRTnMzPuRNKK7rlDB1ILNDWuJqN6rBPI9vYrT/imvpxFI3oiSFCxHs+yzAvssWisFCFUa+btowJrsaZDcPuEMhnMwgdudk8ndyS5vMCMEzKFogn5CyC+yF9J34QOSZKC6wbWQM75fz7JN7YNK1Szk10IoSqS/NqGUT92EkFJDnlorBFOSB6XQlI8S4/BbSFP4u0h+GnHuR+r+8E9WAw7hIQAIQfPhcXnuF0dTi6nKdZN7Z1sFUdFCJcZLmKI9CPeugCCEJJEOQq4TQhAQ8IAU3JqI6UiOXlW2YtQ73t9PGBtur1qtRSrC7Q1ShdvPJuGqOU1BRVW9ffDaVf6KEn5I2qxIYQpRCFHjdCBQIwSVwUDvVQ9JQa5+eb5hzmBqT4ved/i+O9mau2ydTFiGYA4+qzGl3+XqIRf5klEr+LmiTF8u/MvRxln7IWGIEE7FG6sURAb8flMjBJNBuF2WlLyEwh2lzsDwlrpfujPMwEPSHE45YurbShVy00xuwhHiAcqq4LYL1TUMzqZkoUJQIVIKIoOeUSuIMvi6FJp/kw7/quux6EeHsIbZyxvGyZO5A5jCzI7/+EVN/eFJDeKa64Twgg3Fx6iIhV7WL8uiW5ZD2K5s/thkEKlliJsxSX9FCkEVahSB4ZB68HyRIdJ3rnb3nXsz71tyx3/wS0MCYbIme5BFK9G+jOUzCyTpB4tCCDqzmBAUolYI0iNq269JQZ3CH+RZ4+be/NuSpQgkS/LJUxRyrNGxQHNQCRcycfyt09CQ/VU0ZK0SBwCxuegBBcV2ZY8Am+uEUJaBfvetlUKRGag+pFmDAVeo2RZ/FZYK7EG/uIYRRynrEnTL574gK4xT417QkVWPAFLFg1qMLwkn2a5KQURUIwRpLZFECmW9AkqZQSVrSHHzjs6QmMUFKmJZDwqJT3bWPlvqm3u/qLhLMRzgaPVDu328bhY/rnwzV21Fr6W2svl63dKcslDT7ZJjVZNpIchuzsv+pE4KmhkUh/8iyRr+S6iKJRiv1gx/PeX2p/JFHPtqESMLXFT9SWm7g2AqU0IQY63IoEYKmhlsWE2xV0P7GpY/bNiRpT/6VdHYCypwtDr1u0lEY6+IDe+7WV3HNV5FI4fBUspUaB/rlbhClOnNLqubU8e2RHL/Vy56Auf+A+hk+yessbA8AAAAAElFTkSuQmCC" alt="COSMAX" class="header-logo">
+      <div class="header-divider"></div>
+      <div class="header-title">
+        <h1>시생산 통합 관리 시스템</h1>
+        <div class="sub">요청서 작성 · 이력 관리 · 주차별 진행 업데이트</div>
+      </div>
+    </div>
+    <div>
+      <span id="profile-badge" style="margin-right:8px;"></span>
+      <button class="btn btn-outline" onclick="exportBackup()" title="백업">💾<span class="btn-label"> 백업</span></button>
+      <button class="btn btn-outline write-only" onclick="document.getElementById('import-file').click()" title="복원">📂<span class="btn-label"> 복원</span></button>
+      <button class="btn btn-outline" onclick="exportCSV()" title="CSV 내보내기">📥<span class="btn-label"> CSV 내보내기</span></button>
+      <button class="btn btn-primary write-only" onclick="openForm()" title="신규 요청서 작성">＋<span class="btn-label"> 신규 요청서 작성</span></button>
+      <button class="btn btn-outline write-only" style="background:var(--warning-soft); border-color:var(--warning-border); color:#92400e;" onclick="seedDummyData()" title="개발/테스트용 - 완료 후 제거">🧪<span class="btn-label"> 더미 4건 주입</span></button>
+      <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="handleImport(event)">
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('dashboard', this)">📊 대시보드</div>
+  <div class="tab" onclick="switchTab('list', this)">📋 요청 품목 리스트</div>
+  <div class="tab" onclick="switchTab('weekly', this)">📅 주차별 업데이트</div>
+  <div class="tab" onclick="switchTab('process', this)">🔄 프로세스 안내</div>
+</div>
+
+<div class="container">
+
+  <!-- Dashboard -->
+  <div id="tab-dashboard" class="tab-content">
+    <div class="banner">
+      <strong>⚠ No Data, No Work 원칙</strong> — 요청서 미작성 건은 접수되지 않습니다.<br><br>
+      <strong>📌 로컬 저장소 안내</strong> — 이 시스템은 서버 없이 브라우저에 데이터를 저장합니다. <strong>캐시 삭제 시 데이터가 유실되므로, 하단의 [백업(JSON)]을 주기적으로 실행</strong>하세요. (첨부 사진은 자동 압축 저장됩니다.)
+    </div>
+    <div id="profile-banner" class="profile-banner" style="display:none;">
+      <div>👤 <strong>프로필 미설정</strong> — 부서/역할을 설정하면 화면이 최적화됩니다 (향후 사내 계정 연동 예정)</div>
+      <button class="btn btn-primary btn-sm" onclick="openProfileModal()">프로필 설정</button>
+    </div>
+    <div id="backup-reminder" style="display:none; background:var(--warning-soft); border:1px solid var(--warning-border); border-left:3px solid var(--warning); padding:10px 14px; border-radius:var(--radius-sm); margin-bottom:14px; font-size:13px; color:#92400e;">
+      <strong>💾 백업 알림</strong> — <span id="backup-reminder-msg"></span>
+      <button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="exportBackup()">지금 백업</button>
+    </div>
+    <div id="storage-usage" class="storage-usage" style="display:none;">
+      <div class="label">
+        <span>💽 <strong>로컬 저장소 사용량</strong> <span id="storage-usage-text" style="color:#64748b;font-weight:normal;">계산 중…</span></span>
+        <span id="storage-usage-percent" style="font-weight:600;">-</span>
+      </div>
+      <div class="bar"><div id="storage-usage-bar" class="bar-fill" style="width:0%;"></div></div>
+      <div id="storage-usage-hint" style="margin-top:6px; color:#94a3b8; font-size:11px;">사진 첨부가 많으면 5MB 한계에 빠르게 도달할 수 있습니다.</div>
+    </div>
+    <div id="reviewer-queue" class="reviewer-only" style="display:none; margin-bottom:18px;">
+      <h3 style="margin: 0 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">🛠 공정개발 검토 큐</h3>
+      <div class="stats" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-card progress" style="cursor:pointer;" onclick="jumpToReviewerQueue('all')">
+          <div class="label">내 검토 대기</div>
+          <div class="value" id="rq-waiting">0</div>
+        </div>
+        <div class="stat-card issue" style="cursor:pointer;" onclick="jumpToReviewerQueue('urgent')">
+          <div class="label">긴급 중 대기</div>
+          <div class="value" id="rq-urgent">0</div>
+        </div>
+        <div class="stat-card pending" style="cursor:pointer;" onclick="jumpToReviewerQueue('thisweek')">
+          <div class="label">이번 주 시생산 · PD 미완</div>
+          <div class="value" id="rq-thisweek">0</div>
+        </div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat-card total clickable" tabindex="0" onclick="jumpToStatus('')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpToStatus('');}" title="전체 보기"><div class="label">전체 요청</div><div class="value" id="stat-total">0</div></div>
+      <div class="stat-card pending clickable" tabindex="0" onclick="jumpToStatus('pending')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpToStatus('pending');}" title="접수 대기 필터"><div class="label">접수 대기</div><div class="value" id="stat-pending">0</div></div>
+      <div class="stat-card progress clickable" tabindex="0" onclick="jumpToStatus('progress')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpToStatus('progress');}" title="검토 진행중 필터"><div class="label">검토 진행중</div><div class="value" id="stat-progress">0</div></div>
+      <div class="stat-card done clickable" tabindex="0" onclick="jumpToStatus('done')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpToStatus('done');}" title="확인 완료 필터"><div class="label">확인 완료</div><div class="value" id="stat-done">0</div></div>
+      <div class="stat-card issue clickable" tabindex="0" onclick="jumpToStatus('issue')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpToStatus('issue');}" title="지연/이슈 필터"><div class="label">지연/이슈</div><div class="value" id="stat-issue">0</div></div>
+    </div>
+
+    <h3 style="margin: 18px 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">🔥 긴급/이슈 건 (Top)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>요청일</th><th>긴급도</th><th>품목코드</th><th>제품명</th><th>수량</th><th>영업</th><th>상태</th><th>CAPA</th><th>최근 업데이트</th><th>액션</th></tr></thead>
+        <tbody id="urgent-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- List -->
+  <div id="tab-list" class="tab-content" style="display:none;">
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="🔍 품목코드·제품명·고객사·담당자(영업/연구/품질/공정/생산) 검색" oninput="onSearchInput()">
+      <select id="filter-status" onchange="renderList()">
+        <option value="">전체 상태</option>
+        <option value="pending">접수 대기</option>
+        <option value="progress">검토 진행중</option>
+        <option value="done">확인 완료</option>
+        <option value="issue">지연/이슈</option>
+      </select>
+      <select id="filter-urgency" onchange="renderList()">
+        <option value="">전체 긴급도</option>
+        <option value="normal">일반</option>
+        <option value="urgent">긴급</option>
+        <option value="critical">최우선</option>
+      </select>
+      <input type="text" id="filter-dept" placeholder="부서 검색" oninput="onSearchInput()" style="max-width:140px;">
+      <select id="sort-list" onchange="renderList()" title="정렬 기준">
+        <option value="reqdate">요청일 최신순</option>
+        <option value="priority">검토 우선순위순</option>
+        <option value="pilotdate">시생산 예정일순</option>
+      </select>
+      <div class="col-toggle-wrap">
+        <button class="btn btn-outline btn-sm" onclick="toggleColumnMenu(event)" title="표시할 컬럼 선택">⚙ 컬럼</button>
+        <div id="col-toggle-menu" class="col-toggle-menu"></div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="resetListFilters()" title="검색어와 필터를 모두 초기화">↺ 초기화</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="list-table">
+        <thead><tr>
+          <th data-col="reqdate">요청일</th>
+          <th data-col="urgency">긴급도</th>
+          <th data-col="dept">부서</th>
+          <th data-col="fgcode">품목코드</th>
+          <th data-col="product">제품명 / 범위</th>
+          <th data-col="qty">수량</th>
+          <th data-col="sales">영업담당</th>
+          <th data-col="line">라인/CAPA</th>
+          <th data-col="pilot">시생산</th>
+          <th data-col="status">상태</th>
+          <th data-col="action">액션</th>
+        </tr></thead>
+        <tbody id="list-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Weekly -->
+  <div id="tab-weekly" class="tab-content" style="display:none;">
+    <div class="banner" style="display:flex; justify-content:space-between; align-items:center;">
+      <div>📅 <strong>매주 1회 업데이트</strong> — 주차별로 자동 그룹핑됩니다.</div>
+      <button class="btn btn-secondary" onclick="exportWeeklyPDF()">📄 PDF 저장</button>
+    </div>
+    <div id="weekly-content"></div>
+  </div>
+
+  <!-- Process -->
+  <div id="tab-process" class="tab-content" style="display:none;">
+    <h2 style="color: var(--text-primary); margin-bottom: 8px; font-size: 18px; font-weight: 700;">🔄 TO-BE 프로세스 (재정립)</h2>
+    <p style="color: var(--text-muted); margin-bottom: 18px;">동화약품 후시덤큐어 립크림 이슈 이후 재정립된 표준 프로세스입니다.</p>
+    <div class="flow">
+      <div class="flow-step">
+        <span class="num">1</span>
+        <h4>요청서 작성 (영업/마케팅)</h4>
+        <p>표준 양식에 따라 작성. <strong>No Data, No Work.</strong></p>
+      </div>
+      <div class="flow-step">
+        <span class="num">2</span>
+        <h4>연구소 검토 (R&I)</h4>
+        <p>내용물-용기 적합성 사전 점검, 벌크 정보 기입 (벌크 코드, 비중, 점도 등).</p>
+      </div>
+      <div class="flow-step">
+        <span class="num">3</span>
+        <h4>공정개발 확인</h4>
+        <p>홀더/몰드 제작 여부, 설비 이슈, <strong>생산라인 및 CAPA</strong>를 <strong>진행사항 업데이트</strong>에 기입.</p>
+      </div>
+      <div class="flow-step">
+        <span class="num">4</span>
+        <h4>더블체크 승인</h4>
+        <p>의뢰·검토·접수·승인 4단계 서명. 매주 1회 진행 현황 업데이트.</p>
+      </div>
+    </div>
+
+    <h3 style="margin: 24px 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">📌 재발 방지 5대 원칙</h3>
+    <div style="background: var(--bg-surface); padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
+      <ol style="padding-left: 20px; line-height: 2;">
+        <li><strong>표준 요청서 필수</strong> — 팀즈/유선만으로 진행 금지</li>
+        <li><strong>더블체크 서명</strong> — 작성자·검토자·승인자 이중 확인</li>
+        <li><strong>생산 CAPA 기재 필수</strong> — 라인 확인 없이 진행 금지</li>
+        <li><strong>주 1회 진행상황 업데이트</strong> — 지연 건 조기 발견</li>
+        <li><strong>실패 사례 공유</strong> — 재발 방지 학습</li>
+      </ol>
+    </div>
+  </div>
+
+</div>
+
+<!-- Request Form Modal -->
+<div class="modal-bg" id="form-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="form-title">＋ 신규 시생산 요청서 작성</h2>
+      <button class="close-x" onclick="closeForm()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="req-summary" id="req-summary">
+        <strong>📌 필수 항목</strong> — 저장 전 모두 입력하세요. 채워진 항목은 ✓ 표시됩니다.
+        <div class="req-list" id="req-list"></div>
+      </div>
+      <div class="modal-tabs">
+        <div class="modal-tab active" onclick="switchFormTab('basic', this)">기본 정보</div>
+        <div class="modal-tab" onclick="switchFormTab('product', this)">제품 정보</div>
+        <div class="modal-tab" onclick="switchFormTab('bulk', this)">벌크 제조</div>
+        <div class="modal-tab" onclick="switchFormTab('filling', this)">충진/포장</div>
+        <div class="modal-tab" onclick="switchFormTab('quality', this)">품질/리스크</div>
+        <div class="modal-tab" onclick="switchFormTab('updates', this)">진행사항 업데이트</div>
+        <div class="modal-tab" onclick="switchFormTab('approval', this)">승인/진행</div>
+      </div>
+
+      <!-- 기본 정보 -->
+      <div id="form-basic" class="form-section">
+        <div class="section">
+          <div class="section-title">📌 문서 관리</div>
+          <div class="form-grid col-4">
+            <div class="form-row"><label>문서번호</label><input type="text" id="f-docno" placeholder="자동 생성"></div>
+            <div class="form-row"><label>개정번호</label><input type="text" id="f-rev" value="Rev.0"></div>
+            <div class="form-row"><label>요청일 <span class="req">*</span></label><input type="date" id="f-reqdate"></div>
+            <div class="form-row"><label>긴급도 <span class="req">*</span></label>
+              <select id="f-urgency"><option value="normal">일반</option><option value="urgent">긴급</option><option value="critical">최우선</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">🎯 시생산 범위</div>
+          <div class="hint-info">💡 선택 범위에서 제외되는 탭(벌크 제조 / 충진·포장)은 라벨에 "(제외)"가 붙고 흐리게 표시됩니다. 탭 클릭은 가능합니다.</div>
+          <div class="form-grid">
+            <div class="form-row"><label>진행 범위 <span class="req">*</span></label>
+              <select id="f-scope" onchange="updateScopeTabs()">
+                <option value="제조 + 충진/포장">제조 + 충진/포장 (기본)</option>
+                <option value="제조만">제조만</option>
+                <option value="충진/포장만">충진/포장만</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">👥 프로젝트 정보</div>
+          <div class="form-grid col-3">
+            <div class="form-row"><label>고객사 <span class="req">*</span></label><input type="text" id="f-client"></div>
+            <div class="form-row"><label>브랜드</label><input type="text" id="f-brand"></div>
+            <div class="form-row"><label>프로젝트명</label><input type="text" id="f-project"></div>
+            <div class="form-row"><label>부서 <span class="req">*</span></label><input type="text" id="f-dept" placeholder="예: 연구소"></div>
+            <div class="form-row"><label>영업 담당자 <span class="req">*</span></label><input type="text" id="f-sales"></div>
+            <div class="form-row"><label>연구 담당자</label><input type="text" id="f-ri"></div>
+            <div class="form-row"><label>품질 담당자</label><input type="text" id="f-qa"></div>
+            <div class="form-row"><label>공정개발 담당자</label><input type="text" id="f-pd"></div>
+            <div class="form-row"><label>생산 담당자</label><input type="text" id="f-prod"></div>
+          </div>
+        </div>
+        <div class="section" id="section-export" style="display:none;">
+          <div class="section-title">🌍 수출 정보 <span class="pd-badge" style="background:#dbeafe; color:#1e40af;">해외영업</span></div>
+          <div class="hint-info">💡 수출 대상 제품은 국가별 인허가 요건을 확인하세요.</div>
+          <div class="form-grid col-3">
+            <div class="form-row"><label>수출 국가/지역</label><input type="text" id="f-xp-countries" placeholder="예: 중국, 베트남, EU"></div>
+            <div class="form-row"><label>인허가 유형</label>
+              <select id="f-xp-cert" multiple size="4" style="height:auto;">
+                <option>FDA (미국)</option>
+                <option>CE (EU)</option>
+                <option>CPNP (EU)</option>
+                <option>PIF (EU)</option>
+                <option>NMPA (중국)</option>
+                <option>KFDA (한국)</option>
+                <option>기타</option>
+              </select>
+            </div>
+            <div class="form-row"><label>번역 필요</label>
+              <select id="f-xp-translation"><option value="">선택</option><option value="Y">Y (라벨/인서트)</option><option value="N">N</option></select>
+            </div>
+            <div class="form-row full"><label>수출 금지 성분 이슈 / 기타</label><textarea id="f-xp-note" placeholder="대상 국가별 금지 성분, 함량 제한, 라벨링 주의사항 등"></textarea></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">📝 요청 내용</div>
+          <div class="form-grid">
+            <div class="form-row full"><label>요청사항 <span class="req">*</span></label><textarea id="f-request"></textarea></div>
+            <div class="form-row full"><label>목적 및 테스트 사유</label><textarea id="f-purpose"></textarea></div>
+            <div class="form-row"><label>비용 부담 주체</label>
+              <select id="f-cost"><option value="자사">자사</option><option value="고객사">고객사</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 제품 정보 -->
+      <div id="form-product" class="form-section" style="display:none;">
+        <div class="section">
+          <div class="section-title">📦 제품 정보</div>
+          <div class="form-grid col-3">
+            <div class="form-row"><label>완제품 코드</label><input type="text" id="f-fgcode" placeholder="예: P12345"></div>
+            <div class="form-row" style="grid-column: span 2;"><label>제품명 <span class="req">*</span></label><input type="text" id="f-product"></div>
+            <div class="form-row"><label>시생산 수량 <span class="req">*</span></label><input type="text" id="f-qty" placeholder="예: 70,000ea"></div>
+            <div class="form-row"><label>배치 번호</label><input type="text" id="f-batch"></div>
+            <div class="form-row"><label>시생산 예정일</label><input type="date" id="f-pilotdate"></div>
+            <div class="form-row"><label>시생산 완료일</label><input type="date" id="f-pilotdone"></div>
+            <div class="form-row"><label>발매 예정일</label><input type="date" id="f-launch"></div>
+            <div class="form-row"><label>발매 예정 수량</label><input type="text" id="f-launchqty"></div>
+            <div class="form-row"><label>샘플 발송일</label><input type="date" id="f-sampledate"></div>
+            <div class="form-row"><label>샘플 전달처</label><input type="text" id="f-sampleto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 벌크 제조 -->
+      <div id="form-bulk" class="form-section" style="display:none;">
+        <div class="section">
+          <div class="section-title">🧪 처방 정보</div>
+          <div class="form-grid col-3">
+            <div class="form-row"><label>벌크 코드</label><input type="text" id="f-bulkcode"></div>
+            <div class="form-row"><label>처방번호</label><input type="text" id="f-formula" placeholder="예: F-2026-0125"></div>
+            <div class="form-row"><label>배치 사이즈</label><input type="text" id="f-batchsize" placeholder="예: 500 kg"></div>
+            <div class="form-row"><label>원료 수급 현황</label>
+              <select id="f-material"><option value="">선택</option><option>입고 완료</option><option>대기</option><option>대체품 사용</option></select>
+            </div>
+            <div class="form-row"><label>신규 원료 사용</label>
+              <select id="f-newmat"><option value="N">N</option><option value="Y">Y (MSDS 필수)</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">⚙ 제조 공정 파라미터</div>
+          <div class="form-grid">
+            <div class="form-row"><label>제조 장비</label><input type="text" id="f-equipment" placeholder="예: Homo-mixer 1Ton"></div>
+            <div class="form-row full"><label>주의사항</label><textarea id="f-caution" placeholder="제조 시 주의할 사항을 기재"></textarea></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">✅ 벌크 판정 기준</div>
+          <p class="hint" style="margin-bottom:8px;">각 물성치별 <strong>측정 조건</strong> · <strong>즉시 측정 값</strong> · <strong>익일 측정 값</strong>을 별도 관리합니다.</p>
+          <table class="bulk-table">
+            <thead>
+              <tr>
+                <th style="width:110px;">물성치</th>
+                <th style="width:30%;">측정 조건</th>
+                <th>즉시 측정 값</th>
+                <th>익일 측정 값</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>비중</td>
+                <td><input type="text" id="f-sg_cond" placeholder="예: 25°C"></td>
+                <td><input type="text" id="f-sg_now"></td>
+                <td><input type="text" id="f-sg_next"></td>
+              </tr>
+              <tr>
+                <td>점도 (cps)</td>
+                <td><input type="text" id="f-visc_cond" placeholder="예: Brookfield LV, #64, 25°C"></td>
+                <td><input type="text" id="f-visc_now"></td>
+                <td><input type="text" id="f-visc_next"></td>
+              </tr>
+              <tr>
+                <td>경도</td>
+                <td><input type="text" id="f-hard_cond" placeholder="예: Texture Analyzer, 25°C"></td>
+                <td><input type="text" id="f-hard_now"></td>
+                <td><input type="text" id="f-hard_next"></td>
+              </tr>
+              <tr>
+                <td>벌크 pH</td>
+                <td><input type="text" id="f-bph_cond" placeholder="예: pH Meter, 25°C"></td>
+                <td><input type="text" id="f-bph_now"></td>
+                <td><input type="text" id="f-bph_next"></td>
+              </tr>
+              <tr>
+                <td>외관/색상</td>
+                <td><input type="text" id="f-appr_cond" placeholder="예: 육안, D65 조명"></td>
+                <td><input type="text" id="f-appr_now"></td>
+                <td><input type="text" id="f-appr_next"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 충진/포장 -->
+      <div id="form-filling" class="form-section" style="display:none;">
+        <div class="section">
+          <div class="section-title">🚰 충진/포장 공정 파라미터</div>
+          <div class="hint-info">💡 생산라인·CAPA·충진 방식·속도·노즐·초물 검사 등은 <strong>진행사항 업데이트</strong> 탭에서 공정개발팀이 기입합니다.</div>
+          <div class="form-grid col-3">
+            <div class="form-row"><label>충진량 목표 (g)</label><input type="text" id="f-fillwt"></div>
+            <div class="form-row"><label>충진량 허용오차</label><input type="text" id="f-filltol" placeholder="예: ±2%"></div>
+            <div class="form-row"><label>충진 온도 (°C)</label><input type="text" id="f-filltemp"></div>
+            <div class="form-row"><label>표시 용량</label><input type="text" id="f-labelvol" placeholder="예: 30 mL"></div>
+            <div class="form-row"><label>용해 온도 (°C)</label><input type="text" id="f-melttemp"></div>
+            <div class="form-row full"><label>특이사항</label><textarea id="f-fillnote" placeholder="충진·포장 공정 관련 특이사항"></textarea></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">📦 부자재·포장 사양</div>
+          <div class="form-grid col-3">
+            <div class="form-row"><label>용기 재질</label>
+              <select id="f-container"><option value="">선택</option><option>PET(페트)</option><option>HDPE</option><option>Glass</option><option>Tube(튜브)</option><option>기타</option></select>
+            </div>
+            <div class="form-row"><label>용기 용량</label><input type="text" id="f-volume"></div>
+            <div class="form-row"><label>캡 체결 토크</label><input type="text" id="f-torque"></div>
+            <div class="form-row"><label>홀더/몰드 필요 여부</label>
+              <select id="f-holder"><option value="">선택</option><option>불필요</option><option>필요 (신규 제작)</option><option>필요 (기존 보유)</option></select>
+            </div>
+            <div class="form-row"><label>수축 터널 조건</label><input type="text" id="f-tunnel"></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">📸 사진 첨부</div>
+          <p class="hint" style="margin-bottom:8px;">이미지 파일만 업로드 가능 (최대 1.5MB/장). 용량이 크면 저장 한계를 초과할 수 있습니다.</p>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>용기 사진</label>
+              <input type="file" id="f-photo-container" accept="image/*" onchange="handlePhotoUpload(event, 'container')">
+              <div id="photo-container-preview" class="photo-preview"></div>
+            </div>
+            <div class="form-row">
+              <label>코딩 사진</label>
+              <input type="file" id="f-photo-coding" accept="image/*" onchange="handlePhotoUpload(event, 'coding')">
+              <div id="photo-coding-preview" class="photo-preview"></div>
+            </div>
+            <div class="form-row">
+              <label>기타 사진</label>
+              <input type="file" id="f-photo-etc" accept="image/*" onchange="handlePhotoUpload(event, 'etc')">
+              <div id="photo-etc-preview" class="photo-preview"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 품질/리스크 -->
+      <div id="form-quality" class="form-section" style="display:none;">
+        <div class="section">
+          <div class="section-title">🎯 완제품 품질 판정</div>
+          <div class="form-grid">
+            <div class="form-row"><label>한도견본 유무</label>
+              <select id="f-limit" onchange="toggleLimitAttach()"><option value="">선택</option><option>있음 (첨부)</option><option>없음</option></select>
+              <div id="limit-attach-wrap" style="display:none; margin-top:8px;">
+                <input type="file" id="f-photo-limit" accept="image/*" onchange="handlePhotoUpload(event, 'limit')">
+                <div id="photo-limit-preview" class="photo-preview"></div>
+              </div>
+            </div>
+            <div class="form-row full"><label>기능 검사 항목</label><textarea id="f-function" placeholder="누액 테스트, 펌프 작동, 캡 토크 등"></textarea></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">⚠ 리스크 사항</div>
+          <div class="form-grid">
+            <div class="form-row full"><label>신기술 사용 여부</label><textarea id="f-newtech"></textarea></div>
+            <div class="form-row full"><label>제조 공정 우려사항 (Processing Concern)</label><textarea id="f-pconcern"></textarea></div>
+            <div class="form-row full"><label>충진 공정 우려사항 (Filling Concern)</label><textarea id="f-fconcern"></textarea></div>
+            <div class="form-row full"><label>양산 이관 고려사항</label><textarea id="f-scaleup"></textarea></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">📎 첨부문서 체크리스트 <span style="color:#ef4444; font-size:11px;">(No Data, No Work)</span></div>
+          <p class="hint" style="margin-bottom:8px;">📎 각 항목에 실제 파일을 첨부할 수 있습니다 (파일당 최대 2MB · PDF/Office/이미지 등). 파일 업로드 시 체크박스가 자동 체크됩니다.</p>
+          <div class="doc-list" id="doc-list-wrap">
+            <div class="doc-item" id="doc-item-bom">
+              <div class="doc-item-head"><input type="checkbox" id="c-bom"> 원료 명세서(BOM)</div>
+              <div class="doc-item-body">
+                <input type="file" id="f-doc-bom" style="display:none;" onchange="handleDocUpload(event,'bom')">
+                <span class="doc-info" id="doc-info-bom"><span class="doc-empty">선택된 파일 없음</span></span>
+                <div class="doc-actions" id="doc-actions-bom">
+                  <button type="button" onclick="document.getElementById('f-doc-bom').click()">📎 선택</button>
+                </div>
+              </div>
+            </div>
+            <div class="doc-item" id="doc-item-msds">
+              <div class="doc-item-head"><input type="checkbox" id="c-msds"> 물질안전보건자료(MSDS)</div>
+              <div class="doc-item-body">
+                <input type="file" id="f-doc-msds" style="display:none;" onchange="handleDocUpload(event,'msds')">
+                <span class="doc-info" id="doc-info-msds"><span class="doc-empty">선택된 파일 없음</span></span>
+                <div class="doc-actions" id="doc-actions-msds">
+                  <button type="button" onclick="document.getElementById('f-doc-msds').click()">📎 선택</button>
+                </div>
+              </div>
+            </div>
+            <div class="doc-item" id="doc-item-coa">
+              <div class="doc-item-head"><input type="checkbox" id="c-coa"> 시험성적서(COA)</div>
+              <div class="doc-item-body">
+                <input type="file" id="f-doc-coa" style="display:none;" onchange="handleDocUpload(event,'coa')">
+                <span class="doc-info" id="doc-info-coa"><span class="doc-empty">선택된 파일 없음</span></span>
+                <div class="doc-actions" id="doc-actions-coa">
+                  <button type="button" onclick="document.getElementById('f-doc-coa').click()">📎 선택</button>
+                </div>
+              </div>
+            </div>
+            <div class="doc-item" id="doc-item-drawing">
+              <div class="doc-item-head"><input type="checkbox" id="c-drawing"> 부자재 도면</div>
+              <div class="doc-item-body">
+                <input type="file" id="f-doc-drawing" style="display:none;" onchange="handleDocUpload(event,'drawing')">
+                <span class="doc-info" id="doc-info-drawing"><span class="doc-empty">선택된 파일 없음</span></span>
+                <div class="doc-actions" id="doc-actions-drawing">
+                  <button type="button" onclick="document.getElementById('f-doc-drawing').click()">📎 선택</button>
+                </div>
+              </div>
+            </div>
+            <div class="doc-item" id="doc-item-limit">
+              <div class="doc-item-head"><input type="checkbox" id="c-limit"> 한도견본 <span class="hint" style="font-weight:normal; margin-left:4px;">(스펙 문서)</span></div>
+              <div class="doc-item-body">
+                <input type="file" id="f-doc-limit" style="display:none;" onchange="handleDocUpload(event,'limit')">
+                <span class="doc-info" id="doc-info-limit"><span class="doc-empty">선택된 파일 없음</span></span>
+                <div class="doc-actions" id="doc-actions-limit">
+                  <button type="button" onclick="document.getElementById('f-doc-limit').click()">📎 선택</button>
+                </div>
+              </div>
+            </div>
+            <div class="doc-item" id="doc-item-prior">
+              <div class="doc-item-head"><input type="checkbox" id="c-prior"> 이전 테스트 결과</div>
+              <div class="doc-item-body">
+                <input type="file" id="f-doc-prior" style="display:none;" onchange="handleDocUpload(event,'prior')">
+                <span class="doc-info" id="doc-info-prior"><span class="doc-empty">선택된 파일 없음</span></span>
+                <div class="doc-actions" id="doc-actions-prior">
+                  <button type="button" onclick="document.getElementById('f-doc-prior').click()">📎 선택</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 진행사항 업데이트 -->
+      <div id="form-updates" class="form-section" style="display:none;">
+        <div class="section">
+          <div class="section-title">🛠 공정개발 기입 (충진/포장) <span class="pd-badge">공정개발팀</span></div>
+          <div class="hint-info">공정개발팀이 검토 후 입력하는 필드입니다. 최신 값이 이력에 반영됩니다.</div>
+          <div class="form-grid col-3">
+            <div class="form-row"><label>생산라인 (선택)</label>
+              <select id="f-lineKey" onchange="onLineKeyChange()">
+                <option value="">선택 또는 직접 입력</option>
+                <option value="P1-A">1공장 A라인</option>
+                <option value="P1-B">1공장 B라인</option>
+                <option value="P2-A">2공장 A라인</option>
+                <option value="P2-B">2공장 B라인</option>
+                <option value="P3-A">3공장 A라인</option>
+                <option value="P3-B">3공장 B라인</option>
+                <option value="KSPACK">KS팩</option>
+                <option value="OTHER">기타 (직접 입력)</option>
+              </select>
+            </div>
+            <div class="form-row"><label>생산라인 (직접)</label><input type="text" id="f-line" placeholder="예: 3공장 A라인"></div>
+            <div class="form-row"><label>CAPA OK/NG</label>
+              <select id="f-capaOk">
+                <option value="">선택</option>
+                <option value="OK">OK (확인 완료)</option>
+                <option value="NG">NG (미확인/이슈)</option>
+              </select>
+            </div>
+            <div class="form-row"><label>생산 CAPA 수치</label><input type="text" id="f-capa" placeholder="예: 50,000 ea/일"></div>
+            <div class="form-row"><label>충진 방식</label>
+              <select id="f-filltype"><option value="">선택</option><option>피스톤</option><option>플로우미터</option><option>중량식</option></select>
+            </div>
+            <div class="form-row"><label>충진 속도</label><input type="text" id="f-fillspeed" placeholder="예: 30 ea/min"></div>
+            <div class="form-row"><label>노즐 사이즈</label><input type="text" id="f-nozzle"></div>
+            <div class="form-row"><label>초물 검사 수량</label><input type="text" id="f-firstart" placeholder="예: 1~5호"></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">📝 주차별 진행사항 타임라인</div>
+          <p class="hint" style="margin-bottom:10px;">매주 진행 상황을 누적 기록합니다. 수요일 생산협의회 보고용으로 활용됩니다.</p>
+          <div id="updates-list"></div>
+          <div style="background:white; padding:12px; border-radius:6px; margin-top:10px; border:1px dashed #cbd5e1;">
+            <div class="form-grid col-3" style="margin-bottom:8px;">
+              <div class="form-row"><label>업데이트 일자</label><input type="date" id="upd-date"></div>
+              <div class="form-row"><label>작성자 / 부서</label><input type="text" id="upd-author" placeholder="예: 오현우 / 공정개발"></div>
+              <div class="form-row"><label>진행 단계</label>
+                <select id="upd-stage">
+                  <option>요청 접수</option>
+                  <option>연구 검토</option>
+                  <option>공정 검토</option>
+                  <option>벌크 제조</option>
+                  <option>충진/포장</option>
+                  <option>시험 평가</option>
+                  <option>완료</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row"><label>진행 내용</label><textarea id="upd-note" placeholder="이번 주 진행 사항 / 이슈 / 다음 주 계획"></textarea></div>
+            <div style="margin-top:8px; display:flex; gap:8px;">
+              <button class="btn btn-primary btn-sm" id="upd-save-btn" onclick="saveUpdate()">＋ 업데이트 추가</button>
+              <button class="btn btn-outline btn-sm" id="upd-cancel-btn" style="display:none;" onclick="cancelEditUpdate()">취소</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 승인/진행 -->
+      <div id="form-approval" class="form-section" style="display:none;">
+        <div class="section">
+          <div class="section-title">📊 진행 상태</div>
+          <div class="form-grid col-4">
+            <div class="form-row"><label>현재 상태 <span class="req">*</span></label>
+              <select id="f-status">
+                <option value="pending">접수 대기</option>
+                <option value="progress">검토 진행중</option>
+                <option value="done">확인 완료</option>
+                <option value="issue">지연/이슈</option>
+              </select>
+            </div>
+            <div class="form-row"><label>연구소 검토</label>
+              <select id="f-richeck"><option value="대기">대기</option><option value="진행중">진행중</option><option value="완료">완료</option></select>
+            </div>
+            <div class="form-row"><label>공정개발 확인</label>
+              <select id="f-pdcheck"><option value="대기">대기</option><option value="진행중">진행중</option><option value="완료">완료</option></select>
+            </div>
+            <div class="form-row"><label>시생산 상태</label>
+              <select id="f-pilotstatus">
+                <option value="">(미지정)</option>
+                <option value="예정">예정</option>
+                <option value="진행중">진행중</option>
+                <option value="완료">완료</option>
+                <option value="중단">중단</option>
+              </select>
+            </div>
+            <div class="form-row full"><label>진행 메모 / 특이사항</label><textarea id="f-memo"></textarea></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">✍ 더블체크 승인란 <span class="new-badge">필수</span></div>
+          <p class="hint" style="margin-bottom:10px;">각 단계별 담당자 서명으로 이중 확인</p>
+          <div class="form-grid col-4">
+            <div class="form-row"><label>의뢰 (영업)</label><input type="text" id="f-sig1" placeholder="성명"></div>
+            <div class="form-row"><label>검토 (연구소)</label><input type="text" id="f-sig2" placeholder="성명"></div>
+            <div class="form-row"><label>접수 (공정개발)</label><input type="text" id="f-sig3" placeholder="성명"></div>
+            <div class="form-row"><label>최종 승인</label><input type="text" id="f-sig4" placeholder="성명"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeForm()">취소</button>
+      <button class="btn btn-danger" id="btn-delete" style="display:none;" onclick="deleteItem()">삭제</button>
+      <button class="btn btn-primary" onclick="saveForm()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Update Modal -->
+<div class="modal-bg" id="quick-modal">
+  <div class="modal" style="max-width: 560px;">
+    <div class="modal-header">
+      <h2>⚡ 빠른 업데이트</h2>
+      <button class="close-x" onclick="document.getElementById('quick-modal').classList.remove('active')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="quick-summary" style="background: var(--bg-subtle); border: 1px solid var(--border); padding: 10px 12px; border-radius: var(--radius-sm); margin-bottom: 14px; font-size: 13px; color: var(--text-secondary);"></div>
+      <div class="section">
+        <div class="section-title">📊 진행 상태 변경</div>
+        <div class="form-grid col-3">
+          <div class="form-row"><label>현재 상태</label>
+            <select id="q-status">
+              <option value="pending">접수 대기</option>
+              <option value="progress">검토 진행중</option>
+              <option value="done">확인 완료</option>
+              <option value="issue">지연/이슈</option>
+            </select>
+          </div>
+          <div class="form-row"><label>연구소 검토</label>
+            <select id="q-richeck"><option value="대기">대기</option><option value="진행중">진행중</option><option value="완료">완료</option></select>
+          </div>
+          <div class="form-row"><label>공정개발 확인</label>
+            <select id="q-pdcheck"><option value="대기">대기</option><option value="진행중">진행중</option><option value="완료">완료</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">📝 메모 / 업데이트 내용</div>
+        <div class="form-grid">
+          <div class="form-row"><label>작성자 / 부서</label><input type="text" id="q-author" placeholder="예: 오현우 / 공정개발"></div>
+          <div class="form-row"><label>진행 단계</label>
+            <select id="q-stage">
+              <option>요청 접수</option>
+              <option>연구 검토</option>
+              <option>공정 검토</option>
+              <option>벌크 제조</option>
+              <option>충진/포장</option>
+              <option>시험 평가</option>
+              <option>완료</option>
+            </select>
+          </div>
+          <div class="form-row full"><label>메모 <span style="color:#94a3b8; font-weight:normal;">(입력 시 진행사항 타임라인에 자동 기록됩니다)</span></label><textarea id="q-memo" rows="3" placeholder="이번 주 진행 상황 / 이슈 / 다음 계획"></textarea></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('quick-modal').classList.remove('active')">취소</button>
+      <button class="btn btn-primary" onclick="saveQuickUpdate()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Modal -->
+<div class="modal-bg" id="profile-modal">
+  <div class="modal" style="max-width: 520px;">
+    <div class="modal-header">
+      <h2>👤 프로필 설정</h2>
+      <button class="close-x" onclick="closeProfileModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px;">역할과 부서를 설정하면 화면이 최적화됩니다. <strong>향후 사내 계정(SSO) 연동 시 자동으로 채워질 예정</strong>입니다.</p>
+      <div class="form-grid" style="grid-template-columns: 1fr;">
+        <div class="form-row"><label>역할 <span class="req">*</span></label>
+          <select id="pf-role" onchange="updateProfileDeptOptions()"></select>
+        </div>
+        <div class="form-row"><label>세부 부서 <span class="req">*</span></label>
+          <select id="pf-dept"></select>
+        </div>
+        <div class="form-row"><label>이름</label><input type="text" id="pf-name" placeholder="홍길동"></div>
+        <div class="form-row"><label>이메일 (SSO 전환 시 식별자)</label><input type="text" id="pf-email" placeholder="hong@cosmax.com"></div>
+      </div>
+      <div style="margin-top: 14px; padding: 12px 14px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-secondary); line-height: 1.7;">
+        <strong style="color: var(--text-primary);">역할별 기능</strong><br>
+        • <strong>작성자</strong> (마케팅/해외영업/연구소): 요청서 입력 · 부서별 프리셋<br>
+        • <strong>검토자</strong> (공정개발팀): 검토 대기 큐 · 빠른 업데이트<br>
+        • <strong>참조자</strong> (생산팀/KS팩): 읽기 전용 · 시생산 일정 조회
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" onclick="clearProfile()">초기화</button>
+      <button class="btn btn-outline" onclick="closeProfileModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveProfileFromForm()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Snackbar (for delete undo etc.) -->
+<div class="snackbar" id="snackbar">
+  <span class="snack-msg" id="snack-msg"></span>
+  <button class="snack-undo" id="snack-undo" style="display:none;" onclick="handleSnackUndo()">되돌리기</button>
+  <button class="snack-close" onclick="hideSnackbar()" title="닫기">✕</button>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-bg" id="detail-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📄 요청서 상세 보기</h2>
+      <button class="close-x" onclick="document.getElementById('detail-modal').classList.remove('active')">✕</button>
+    </div>
+    <div class="modal-body" id="detail-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="document.getElementById('detail-modal').classList.remove('active')">닫기</button>
+      <button class="btn btn-outline" id="detail-copy" title="주요 항목을 텍스트로 클립보드에 복사">📋 텍스트 복사</button>
+      <button class="btn btn-outline write-only" id="detail-duplicate" title="이 요청서를 템플릿으로 신규 생성">📑 복제</button>
+      <button class="btn btn-primary write-only" id="detail-quick">⚡ 빠른 업데이트</button>
+      <button class="btn btn-secondary write-only" id="detail-edit">✏ 편집</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== Data ====================
+const STORAGE_KEY = 'cosmax_pilot_requests_v4';
+const META_KEY = 'cosmax_pilot_meta_v1';
+const PROFILE_KEY = 'cosmax_pilot_profile_v1';
+const SCHEMA_VERSION = 1;
+const BACKUP_REMIND_DAYS = 7;
+
+// Role / Dept constants — designed for future SSO (claim-compatible)
+const ROLE_AUTHOR = 'author';
+const ROLE_REVIEWER = 'reviewer';
+const ROLE_VIEWER = 'viewer';
+const ROLES = [
+  { key: ROLE_AUTHOR, label: '작성자' },
+  { key: ROLE_REVIEWER, label: '검토자' },
+  { key: ROLE_VIEWER, label: '참조자' },
+];
+const DEPTS_BY_ROLE = {
+  [ROLE_AUTHOR]: [
+    { key: 'marketing', label: '마케팅' },
+    { key: 'overseas', label: '해외영업' },
+    { key: 'ri', label: '연구소' },
+  ],
+  [ROLE_REVIEWER]: [
+    { key: 'pd', label: '공정개발팀' },
+  ],
+  [ROLE_VIEWER]: [
+    { key: 'production', label: '생산팀' },
+    { key: 'kspack', label: 'KS팩' },
+  ],
+};
+const ROLE_LABEL = Object.fromEntries(ROLES.map(r => [r.key, r.label]));
+function deptLabel(roleKey, deptKey) {
+  const list = DEPTS_BY_ROLE[roleKey] || [];
+  const found = list.find(d => d.key === deptKey);
+  return found ? found.label : '';
+}
+let requests = [];
+let meta = { schemaVersion: SCHEMA_VERSION, lastExport: null };
+// SSO-compatible claim shape. Before SSO: user picks via profile modal.
+// After SSO: populate from IdP claims, keep same keys.
+let profile = { role: null, dept: null, name: '', email: '', org: 'COSMAX' };
+let editingId = null;
+let currentUpdates = []; // edit session progress updates
+let editingUpdateIdx = null; // index being edited within currentUpdates
+let currentPhotos = { container: null, coding: null, etc: null, limit: null }; // edit session photos (base64 data URLs)
+const PHOTO_KINDS = ['container', 'coding', 'etc', 'limit'];
+const PHOTO_MAX_BYTES = 1.5 * 1024 * 1024;
+// Attachment files (per checklist item) — full file blobs, not just images
+const DOC_KINDS = ['bom', 'msds', 'coa', 'drawing', 'limit', 'prior'];
+const DOC_LABELS = {
+  bom: '원료 명세서(BOM)', msds: '물질안전보건자료(MSDS)', coa: '시험성적서(COA)',
+  drawing: '부자재 도면', limit: '한도견본', prior: '이전 테스트 결과'
+};
+const DOC_MAX_BYTES = 2 * 1024 * 1024; // 2MB per file
+let currentDocs = { bom: null, msds: null, coa: null, drawing: null, limit: null, prior: null };
+
+function loadMeta() {
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      meta.schemaVersion = Number.isInteger(parsed.schemaVersion) ? parsed.schemaVersion : SCHEMA_VERSION;
+      meta.lastExport = typeof parsed.lastExport === 'string' ? parsed.lastExport : null;
+    }
+  } catch(e) { /* ignore corrupted meta */ }
+}
+
+function saveMeta() {
+  try { localStorage.setItem(META_KEY, JSON.stringify(meta)); return true; }
+  catch(e) { return false; }
+}
+
+// ==================== Profile (SSO-ready) ====================
+function loadProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (p && typeof p === 'object') {
+      profile.role = ROLES.some(r => r.key === p.role) ? p.role : null;
+      const depts = DEPTS_BY_ROLE[profile.role] || [];
+      profile.dept = depts.some(d => d.key === p.dept) ? p.dept : null;
+      profile.name = typeof p.name === 'string' ? p.name.slice(0, 60) : '';
+      profile.email = typeof p.email === 'string' ? p.email.slice(0, 120) : '';
+      profile.org = typeof p.org === 'string' ? p.org.slice(0, 40) : 'COSMAX';
+    }
+  } catch(e) { /* ignore corrupted profile */ }
+}
+function saveProfile() {
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); return true; }
+  catch(e) { return false; }
+}
+function getProfile() { return profile; }
+function hasProfile() { return !!(profile.role && profile.dept); }
+function isRole(r) { return profile.role === r; }
+function isDept(d) { return profile.dept === d; }
+
+function openProfileModal() {
+  document.getElementById('pf-name').value = profile.name || '';
+  document.getElementById('pf-email').value = profile.email || '';
+  const roleSel = document.getElementById('pf-role');
+  roleSel.innerHTML = '<option value="">선택</option>' +
+    ROLES.map(r => `<option value="${r.key}">${r.label}</option>`).join('');
+  roleSel.value = profile.role || '';
+  updateProfileDeptOptions();
+  document.getElementById('profile-modal').classList.add('active');
+}
+function closeProfileModal() {
+  document.getElementById('profile-modal').classList.remove('active');
+}
+function updateProfileDeptOptions() {
+  const role = document.getElementById('pf-role').value;
+  const deptSel = document.getElementById('pf-dept');
+  const list = DEPTS_BY_ROLE[role] || [];
+  deptSel.innerHTML = '<option value="">선택</option>' +
+    list.map(d => `<option value="${d.key}">${d.label}</option>`).join('');
+  deptSel.value = (role === profile.role) ? (profile.dept || '') : '';
+}
+function saveProfileFromForm() {
+  const role = document.getElementById('pf-role').value;
+  const dept = document.getElementById('pf-dept').value;
+  const name = document.getElementById('pf-name').value.trim();
+  const email = document.getElementById('pf-email').value.trim();
+  if (!role || !dept) { alert('역할과 세부 부서를 선택하세요.'); return; }
+  profile.role = role;
+  profile.dept = dept;
+  profile.name = name.slice(0, 60);
+  profile.email = email.slice(0, 120);
+  if (!saveProfile()) { alert('프로필 저장 실패 — 브라우저 저장소 확인 필요'); return; }
+  closeProfileModal();
+  renderProfileBadge();
+  applyRoleUI();
+  renderCurrent();
+  showSnackbar(`프로필 설정 완료: ${ROLE_LABEL[profile.role]} / ${deptLabel(profile.role, profile.dept)}${name?' · '+name:''}`);
+}
+function clearProfile() {
+  if (!confirm('프로필을 초기화하시겠습니까?')) return;
+  profile = { role: null, dept: null, name: '', email: '', org: 'COSMAX' };
+  try { localStorage.removeItem(PROFILE_KEY); } catch(e) {}
+  closeProfileModal();
+  renderProfileBadge();
+  applyRoleUI();
+  renderCurrent();
+}
+function roleIcon(role) {
+  return { [ROLE_AUTHOR]: '✎', [ROLE_REVIEWER]: '🔍', [ROLE_VIEWER]: '👁' }[role] || '👤';
+}
+function renderProfileBadge() {
+  const el = document.getElementById('profile-badge');
+  if (!el) return;
+  if (!hasProfile()) {
+    el.innerHTML = '<button class="btn btn-outline" onclick="openProfileModal()" style="background:var(--warning-soft); border-color:var(--warning-border); color:#92400e;">👤 프로필 설정</button>';
+  } else {
+    const roleLbl = ROLE_LABEL[profile.role] || '';
+    const deptLbl = deptLabel(profile.role, profile.dept);
+    const nameTxt = profile.name ? ` · ${esc(profile.name)}` : '';
+    const ico = roleIcon(profile.role);
+    const readOnly = isRole(ROLE_VIEWER) ? '<span class="readonly-badge">읽기 전용</span>' : '';
+    el.innerHTML = `<button class="btn btn-outline" onclick="openProfileModal()" title="프로필 변경 (${esc(roleLbl)})">${ico} ${esc(roleLbl)} / ${esc(deptLbl)}${nameTxt}</button>${readOnly}`;
+  }
+}
+function applyRoleUI() {
+  // Read-only viewer: hide write actions
+  const isViewer = isRole(ROLE_VIEWER);
+  document.body.classList.toggle('role-viewer', isViewer);
+  document.body.classList.toggle('role-reviewer', isRole(ROLE_REVIEWER));
+  document.body.classList.toggle('role-author', isRole(ROLE_AUTHOR));
+}
+function renderProfileBanner() {
+  const el = document.getElementById('profile-banner');
+  if (!el) return;
+  if (hasProfile()) { el.style.display = 'none'; return; }
+  el.style.display = '';
+}
+
+function loadData() {
+  loadMeta();
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) { requests = parsed; return; }
+    } catch(e) {
+      console.error('저장 데이터 파싱 실패:', e);
+      alert('저장된 데이터를 불러올 수 없어 새로 시작합니다. (백업 파일이 있으면 [복원] 사용)');
+    }
+  }
+  requests = [];
+  saveData();
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+    return true;
+  } catch (e) {
+    const isQuota = e && (e.name === 'QuotaExceededError' || /quota/i.test(String(e.message||e)));
+    const msg = isQuota
+      ? '⚠ 저장 실패: 브라우저 저장 용량(약 5MB)을 초과했습니다.\n\n권장 조치(순서대로):\n'
+        + '① [백업] 버튼으로 JSON 파일 저장\n'
+        + '② 사진 첨부가 많은 항목 편집 → 불필요한 사진 제거\n'
+        + '③ 오래된 완료 건 삭제\n\n(' + (e && e.message || e) + ')'
+      : '저장 실패: 브라우저 저장에 실패했습니다.\n[백업] 후 브라우저를 재시작해보세요.\n(' + (e && e.message || e) + ')';
+    alert(msg);
+    return false;
+  }
+}
+
+function backupDaysAgo() {
+  if (!meta.lastExport) return null;
+  const t = new Date(meta.lastExport).getTime();
+  if (isNaN(t)) return null;
+  return Math.floor((Date.now() - t) / 86400000);
+}
+
+function renderBackupReminder() {
+  const box = document.getElementById('backup-reminder');
+  const msg = document.getElementById('backup-reminder-msg');
+  if (!box || !msg) return;
+  if (requests.length === 0) { box.style.display = 'none'; return; }
+  const days = backupDaysAgo();
+  if (days === null) {
+    msg.textContent = '아직 백업 기록이 없습니다. 데이터 유실을 막기 위해 주기적으로 JSON 백업을 저장하세요.';
+    box.style.display = '';
+  } else if (days >= BACKUP_REMIND_DAYS) {
+    msg.textContent = `마지막 백업이 ${days}일 전입니다. 지금 백업하는 것을 권장합니다.`;
+    box.style.display = '';
+  } else {
+    box.style.display = 'none';
+  }
+}
+function genId() { return 'R' + Date.now() + Math.floor(Math.random()*1000); }
+
+// ==================== Storage Usage ====================
+const STORAGE_LIMIT_BYTES = 5 * 1024 * 1024; // 5MB typical localStorage cap
+function calcStorageBytes() {
+  try {
+    const a = localStorage.getItem(STORAGE_KEY) || '';
+    const b = localStorage.getItem(META_KEY) || '';
+    const c = localStorage.getItem(PROFILE_KEY) || '';
+    // UTF-16 strings: each char ~2 bytes
+    return (a.length + b.length + c.length) * 2;
+  } catch(e) { return 0; }
+}
+function fmtBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+  return (n/1024/1024).toFixed(2) + ' MB';
+}
+function renderStorageUsage() {
+  const box = document.getElementById('storage-usage');
+  if (!box) return;
+  if (requests.length === 0) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  const bytes = calcStorageBytes();
+  const pct = Math.min(100, Math.round((bytes / STORAGE_LIMIT_BYTES) * 100));
+  const bar = document.getElementById('storage-usage-bar');
+  const txt = document.getElementById('storage-usage-text');
+  const pctEl = document.getElementById('storage-usage-percent');
+  const hint = document.getElementById('storage-usage-hint');
+  if (txt) txt.textContent = `(${fmtBytes(bytes)} / 약 ${fmtBytes(STORAGE_LIMIT_BYTES)})`;
+  if (pctEl) pctEl.textContent = pct + '%';
+  if (bar) {
+    bar.style.width = pct + '%';
+    bar.classList.remove('warn','danger');
+    if (pct >= 85) bar.classList.add('danger');
+    else if (pct >= 65) bar.classList.add('warn');
+  }
+  if (hint) {
+    if (pct >= 85) hint.textContent = '⚠ 위험: 곧 저장 한계에 도달합니다. [백업] 후 사진/오래된 건을 정리하세요.';
+    else if (pct >= 65) hint.textContent = '⚠ 주의: 절반 이상 사용 중입니다. 정기 백업을 권장합니다.';
+    else hint.textContent = '사진 첨부가 많으면 5MB 한계에 빠르게 도달할 수 있습니다.';
+  }
+}
+
+// Jump from dashboard stat card to filtered list
+function jumpToStatus(status) {
+  const listTab = Array.from(document.querySelectorAll('.tabs .tab')).find(t => t.textContent.includes('리스트'));
+  if (listTab) switchTab('list', listTab);
+  const sStatus = document.getElementById('filter-status');
+  const sUrg = document.getElementById('filter-urgency');
+  const sSearch = document.getElementById('search');
+  const sDept = document.getElementById('filter-dept');
+  if (sSearch) sSearch.value = '';
+  if (sDept) sDept.value = '';
+  if (sUrg) sUrg.value = '';
+  if (sStatus) sStatus.value = status || '';
+  reviewerQueueFilter = null;
+  renderList();
+}
+
+// Debounced search input
+let _searchDebounce = null;
+function onSearchInput() {
+  if (_searchDebounce) clearTimeout(_searchDebounce);
+  _searchDebounce = setTimeout(() => { renderList(); }, 250);
+}
+
+// ==================== Render ====================
+function renderStats() {
+  document.getElementById('stat-total').textContent = requests.length;
+  document.getElementById('stat-pending').textContent = requests.filter(r=>r.status==='pending').length;
+  document.getElementById('stat-progress').textContent = requests.filter(r=>r.status==='progress').length;
+  document.getElementById('stat-done').textContent = requests.filter(r=>r.status==='done').length;
+  document.getElementById('stat-issue').textContent = requests.filter(r=>r.status==='issue').length;
+  renderBackupReminder();
+  renderStorageUsage();
+  renderProfileBanner();
+  renderReviewerQueue();
+
+  const urgent = requests.filter(r=>r.status==='issue' || r.urgency==='critical')
+    .sort((a,b)=>new Date(b.reqdate||'')-new Date(a.reqdate||'')).slice(0,10);
+  const tb = document.getElementById('urgent-tbody');
+  tb.innerHTML = urgent.map(r=>{
+    const latest = latestUpdate(r);
+    const capaOk = recordCapaOk(r);
+    const sid = safeId(r.id);
+    return `
+    <tr style="cursor:pointer" onclick="viewDetail('${sid}')">
+      <td>${dash(r.reqdate)}</td>
+      <td><span class="badge ${urgencyBadge(r.urgency)}">${urgencyLabel(r.urgency)}</span></td>
+      <td><strong>${dash(r.fgcode)}</strong></td>
+      <td>${dash(r.product)}</td>
+      <td>${dash(r.qty)}</td>
+      <td>${dash(r.sales)}</td>
+      <td><span class="badge ${statusBadge(r.status)}">${statusLabel(r.status)}</span></td>
+      <td class="${capaOk?'capa-ok':'capa-missing'}">${capaOk?esc(r.capa):'⚠ 미확인'}</td>
+      <td style="font-size:11px;color:#64748b">${latest ? `<strong>${esc(latest.date)}</strong> [${esc(latest.stage)}] ${esc((latest.note||'').substring(0,30))}` : '-'}</td>
+      <td><button class="btn btn-primary btn-sm write-only" onclick="openQuickUpdate('${sid}', event)" title="상태·메모 빠른 업데이트">⚡</button></td>
+    </tr>
+  `;}).join('') || '<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:20px">긴급/이슈 건이 없습니다</td></tr>';
+}
+
+function renderReviewerQueue() {
+  const box = document.getElementById('reviewer-queue');
+  if (!box) return;
+  if (!isRole(ROLE_REVIEWER)) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  const waitingList = requests.filter(r => (r.pdcheck || '대기') !== '완료' && r.status !== 'done');
+  const urgentList = waitingList.filter(r => r.urgency === 'urgent' || r.urgency === 'critical');
+  const now = new Date();
+  const weekEnd = new Date(now);
+  weekEnd.setDate(now.getDate() + (7 - (now.getDay() || 7)));
+  weekEnd.setHours(23,59,59,999);
+  const thisweekList = waitingList.filter(r => {
+    if (!r.pilotdate) return false;
+    const d = new Date(r.pilotdate);
+    return !isNaN(d) && d <= weekEnd;
+  });
+  document.getElementById('rq-waiting').textContent = waitingList.length;
+  document.getElementById('rq-urgent').textContent = urgentList.length;
+  document.getElementById('rq-thisweek').textContent = thisweekList.length;
+}
+
+function jumpToReviewerQueue(kind) {
+  const listTab = Array.from(document.querySelectorAll('.tabs .tab')).find(t => t.textContent.includes('리스트'));
+  if (listTab) switchTab('list', listTab);
+  const sStatus = document.getElementById('filter-status');
+  const sUrg = document.getElementById('filter-urgency');
+  const sSearch = document.getElementById('search');
+  const sDept = document.getElementById('filter-dept');
+  sSearch.value = ''; sDept.value = '';
+  if (kind === 'urgent') {
+    sStatus.value = ''; sUrg.value = 'urgent';
+    // will also match critical below via custom filter, but keep sorted
+  } else {
+    sStatus.value = ''; sUrg.value = '';
+  }
+  // Use a temporary flag to narrow further: PD-pending only
+  reviewerQueueFilter = kind || null;
+  const sortSel = document.getElementById('sort-list');
+  if (sortSel) sortSel.value = 'priority';
+  renderList();
+}
+var reviewerQueueFilter = null;
+
+function latestUpdate(r) {
+  const ups = r.updates || [];
+  if (ups.length === 0) return null;
+  return ups.slice().sort((a,b)=>new Date(b.date||'')-new Date(a.date||''))[0];
+}
+
+function statusBadge(s) { return {pending:'b-pending', progress:'b-progress', done:'b-done', issue:'b-issue'}[s]||'b-pending'; }
+function statusIcon(s) { return {pending:'⏳', progress:'🔄', done:'✓', issue:'⚠'}[s]||''; }
+function statusLabel(s) {
+  const ico = statusIcon(s);
+  const t = {pending:'접수 대기', progress:'검토 진행중', done:'확인 완료', issue:'지연/이슈'}[s]||'-';
+  return ico ? (ico + ' ' + t) : t;
+}
+function urgencyBadge(u) { return {normal:'b-normal', urgent:'b-urgent', critical:'b-critical'}[u]||'b-normal'; }
+function urgencyIcon(u) { return {normal:'·', urgent:'❗', critical:'🔥'}[u]||''; }
+function urgencyLabel(u) {
+  const ico = urgencyIcon(u);
+  const t = {normal:'일반', urgent:'긴급', critical:'최우선'}[u]||'-';
+  return ico ? (ico + ' ' + t) : t;
+}
+function scopeBadge(s) { return {'제조 + 충진/포장':'b-scope-both','제조만':'b-scope-bulk','충진/포장만':'b-scope-fill'}[s]||''; }
+function pilotStatusBadge(p) { return {'예정':'b-pilot-scheduled','진행중':'b-pilot-inprogress','완료':'b-pilot-done','중단':'b-pilot-stopped'}[p]||''; }
+function updateScopeTabs() {
+  const sel = document.getElementById('f-scope');
+  const scope = (sel && sel.value) || '제조 + 충진/포장';
+  const tabs = document.querySelectorAll('#form-modal .modal-tabs .modal-tab');
+  tabs.forEach(t => {
+    if (!t.dataset.origLabel) t.dataset.origLabel = t.textContent.replace(/\s*\(제외\)\s*$/, '').trim();
+    const label = t.dataset.origLabel;
+    const isBulk = label.includes('벌크');
+    const isFill = label.includes('충진');
+    const outOfScope =
+      (isBulk && scope === '충진/포장만') ||
+      (isFill && scope === '제조만');
+    t.classList.toggle('dimmed', outOfScope);
+    t.classList.toggle('scope-disabled', outOfScope);
+    t.textContent = outOfScope ? (label + ' (제외)') : label;
+  });
+  // Disable inputs in out-of-scope sections
+  const bulk = document.getElementById('form-bulk');
+  const fill = document.getElementById('form-filling');
+  setSectionDisabled(bulk, scope === '충진/포장만', '벌크 제조');
+  setSectionDisabled(fill, scope === '제조만', '충진/포장');
+}
+
+function setSectionDisabled(section, disabled, label) {
+  if (!section) return;
+  section.classList.toggle('scope-disabled-section', disabled);
+  section.querySelectorAll('input, select, textarea').forEach(el => {
+    if (disabled) {
+      if (!el.dataset._wasDisabled) el.dataset._wasDisabled = el.disabled ? '1' : '0';
+      el.disabled = true;
+    } else if (el.dataset._wasDisabled !== undefined) {
+      el.disabled = el.dataset._wasDisabled === '1';
+      delete el.dataset._wasDisabled;
+    }
+  });
+  // Banner at top of section
+  const bannerId = section.id + '-scope-banner';
+  let banner = document.getElementById(bannerId);
+  if (disabled) {
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = bannerId;
+      banner.className = 'scope-disabled-banner';
+      banner.textContent = `⚠ 현재 시생산 범위에서 "${label}"는 제외 대상입니다. 이 탭의 입력은 비활성화됐어요. (기본정보 탭에서 범위를 변경하면 다시 활성화됩니다)`;
+      section.insertBefore(banner, section.firstChild);
+    }
+  } else if (banner) {
+    banner.remove();
+  }
+}
+
+// ==================== Required Field Summary ====================
+const REQUIRED_FIELDS = [
+  { id: 'f-reqdate', label: '요청일', tab: 'basic' },
+  { id: 'f-client', label: '고객사', tab: 'basic' },
+  { id: 'f-dept', label: '부서', tab: 'basic' },
+  { id: 'f-sales', label: '영업 담당자', tab: 'basic' },
+  { id: 'f-request', label: '요청사항', tab: 'basic' },
+  { id: 'f-product', label: '제품명', tab: 'product' },
+  { id: 'f-qty', label: '시생산 수량', tab: 'product' },
+];
+function refreshReqSummary() {
+  const list = document.getElementById('req-list');
+  if (!list) return;
+  list.innerHTML = REQUIRED_FIELDS.map(f => {
+    const el = document.getElementById(f.id);
+    const val = el ? (el.value || '').trim() : '';
+    const cls = val ? 'req-tag filled' : 'req-tag';
+    return `<span class="${cls}" data-tgt="${f.id}" data-tab="${f.tab}" onclick="focusReqField('${f.id}','${f.tab}')" style="cursor:pointer;">${esc(f.label)}</span>`;
+  }).join('');
+}
+function focusReqField(id, tab) {
+  // Switch to the right tab first
+  const tabs = document.querySelectorAll('#form-modal .modal-tabs .modal-tab');
+  let target = null;
+  tabs.forEach(t => {
+    const lbl = (t.dataset.origLabel || t.textContent || '').replace(/\s*\(제외\)\s*$/, '').trim();
+    if ((tab === 'basic' && lbl.includes('기본')) || (tab === 'product' && lbl.includes('제품'))) target = t;
+  });
+  if (target) target.click();
+  setTimeout(() => {
+    const el = document.getElementById(id);
+    if (el) { el.focus(); el.scrollIntoView({behavior:'smooth', block:'center'}); }
+  }, 50);
+}
+function bindReqSummaryListeners() {
+  REQUIRED_FIELDS.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (el && !el.dataset._reqBound) {
+      el.dataset._reqBound = '1';
+      el.addEventListener('input', refreshReqSummary);
+      el.addEventListener('change', refreshReqSummary);
+      el.addEventListener('input', () => el.classList.remove('field-error'));
+    }
+  });
+}
+function clearFieldErrors() {
+  document.querySelectorAll('#form-modal .field-error').forEach(el => el.classList.remove('field-error'));
+  document.querySelectorAll('#form-modal .field-error-msg').forEach(el => el.remove());
+}
+
+function resetListFilters() {
+  document.getElementById('search').value = '';
+  document.getElementById('filter-status').selectedIndex = 0;
+  document.getElementById('filter-urgency').selectedIndex = 0;
+  document.getElementById('filter-dept').value = '';
+  const sortSel = document.getElementById('sort-list');
+  if (sortSel) sortSel.selectedIndex = 0;
+  reviewerQueueFilter = null;
+  renderList();
+}
+
+// Score for "priority" sort: urgency weight + days waiting + proximity to pilot date.
+// Completed requests score at 0 so they sink to the bottom.
+function priorityScore(r) {
+  if (r.status === 'done') return 0;
+  const urgencyW = r.urgency === 'critical' ? 30 : (r.urgency === 'urgent' ? 15 : 5);
+  const today = new Date();
+  let daysWait = 0;
+  if (r.reqdate) {
+    const d = new Date(r.reqdate);
+    if (!isNaN(d)) daysWait = Math.max(0, Math.floor((today - d) / 86400000));
+  }
+  let proximity = 0;
+  if (r.pilotdate) {
+    const d = new Date(r.pilotdate);
+    if (!isNaN(d)) {
+      const delta = Math.floor((d - today) / 86400000);
+      if (delta < 0) proximity = 20;           // already past due
+      else if (delta <= 3) proximity = 18;
+      else if (delta <= 7) proximity = 12;
+      else if (delta <= 14) proximity = 6;
+    }
+  }
+  const pdPending = ((r.pdcheck || '대기') !== '완료') ? 8 : 0;
+  const issueBoost = (r.status === 'issue') ? 10 : 0;
+  return urgencyW + Math.min(daysWait, 30) + proximity + pdPending + issueBoost;
+}
+
+function renderList() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const fs = document.getElementById('filter-status').value;
+  const fu = document.getElementById('filter-urgency').value;
+  const fd = document.getElementById('filter-dept').value.trim().toLowerCase();
+
+  let list = requests.filter(r=>{
+    if (fs && r.status!==fs) return false;
+    if (fu && r.urgency!==fu) return false;
+    if (fd && !(r.dept||'').toLowerCase().includes(fd)) return false;
+    if (q) {
+      const s = [r.fgcode,r.product,r.client,r.sales,r.brand,r.project,r.docno,
+                 r.ri,r.qa,r.pd,r.prod,r.dept,r.bulkcode,r.formula,r.line,r.batch].join(' ').toLowerCase();
+      if (!s.includes(q)) return false;
+    }
+    // Reviewer-queue narrowing (set by jumpToReviewerQueue)
+    if (reviewerQueueFilter) {
+      if ((r.pdcheck || '대기') === '완료' || r.status === 'done') return false;
+      if (reviewerQueueFilter === 'urgent' && !(r.urgency === 'urgent' || r.urgency === 'critical')) return false;
+      if (reviewerQueueFilter === 'thisweek') {
+        if (!r.pilotdate) return false;
+        const d = new Date(r.pilotdate);
+        const weekEnd = new Date();
+        weekEnd.setDate(weekEnd.getDate() + (7 - (weekEnd.getDay() || 7)));
+        weekEnd.setHours(23,59,59,999);
+        if (isNaN(d) || d > weekEnd) return false;
+      }
+    }
+    return true;
+  });
+
+  const sortBy = (document.getElementById('sort-list') || {}).value || 'reqdate';
+  if (sortBy === 'priority') {
+    list.sort((a,b) => priorityScore(b) - priorityScore(a));
+  } else if (sortBy === 'pilotdate') {
+    list.sort((a,b) => {
+      const da = a.pilotdate ? new Date(a.pilotdate).getTime() : Infinity;
+      const db = b.pilotdate ? new Date(b.pilotdate).getTime() : Infinity;
+      return da - db;
+    });
+  } else {
+    list.sort((a,b) => new Date(b.reqdate||'') - new Date(a.reqdate||''));
+  }
+
+  const tb = document.getElementById('list-tbody');
+  tb.innerHTML = list.map(r=>{
+    const capaOk = recordCapaOk(r);
+    const sid = safeId(r.id);
+    const scopeCls = scopeBadge(r.scope);
+    const scopeHtml = r.scope && scopeCls ? `<br><span class="badge ${scopeCls}" style="font-size:10px">${esc(r.scope)}</span>` : '';
+    const psCls = pilotStatusBadge(r.pilotstatus);
+    const pilotHtml = (r.pilotdate || r.pilotdone || r.pilotstatus) ?
+      `<div style="font-size:11px">${r.pilotdate?'예정 '+esc(r.pilotdate):''}</div>` +
+      `<div style="font-size:11px;color:#64748b">${r.pilotdone?'완료 '+esc(r.pilotdone):''}</div>` +
+      (r.pilotstatus && psCls ? `<span class="badge ${psCls}" style="font-size:10px">${esc(r.pilotstatus)}</span>` : '') :
+      '<span style="color:#cbd5e1">-</span>';
+    return `
+    <tr>
+      <td data-col="reqdate" data-label="요청일">${dash(r.reqdate)}</td>
+      <td data-col="urgency" data-label="긴급도"><span class="badge ${urgencyBadge(r.urgency)}">${urgencyLabel(r.urgency)}</span></td>
+      <td data-col="dept" data-label="부서">${dash(r.dept)}</td>
+      <td data-col="fgcode" data-label="품목코드"><strong>${dash(r.fgcode)}</strong></td>
+      <td data-col="product" data-label="제품명">${dash(r.product)}${scopeHtml}</td>
+      <td data-col="qty" data-label="수량">${dash(r.qty)}</td>
+      <td data-col="sales" data-label="영업담당">${dash(r.sales)}</td>
+      <td data-col="line" data-label="라인/CAPA">${r.line?`${esc(r.line)}<br><span class="${capaOk?'capa-ok':'capa-missing'}" style="font-size:11px">${capaOk?esc(r.capa):'⚠ CAPA 미확인'}</span>`:'<span class="capa-missing">⚠ 미배정</span>'}</td>
+      <td data-col="pilot" data-label="시생산">${pilotHtml}</td>
+      <td data-col="status" data-label="상태"><span class="badge ${statusBadge(r.status)}">${statusLabel(r.status)}</span></td>
+      <td data-col="action">
+        <button class="btn btn-outline btn-sm" onclick="viewDetail('${sid}')">보기</button>
+        <button class="btn btn-primary btn-sm write-only" onclick="openQuickUpdate('${sid}', event)" title="상태·메모 빠른 업데이트">⚡</button>
+        <button class="btn btn-secondary btn-sm write-only" onclick="editItem('${sid}')">편집</button>
+        <button class="btn btn-outline btn-sm write-only" onclick="event.stopPropagation(); duplicateItem('${sid}')" title="이 요청서를 템플릿으로 신규 생성">📑</button>
+      </td>
+    </tr>
+  `;}).join('') || '<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:30px">조건에 맞는 항목이 없습니다</td></tr>';
+  applyColumnVisibility();
+}
+
+// ==================== Column Visibility ====================
+const COL_DEFS = [
+  { key: 'reqdate', label: '요청일', defaultOn: true },
+  { key: 'urgency', label: '긴급도', defaultOn: true },
+  { key: 'dept', label: '부서', defaultOn: false },
+  { key: 'fgcode', label: '품목코드', defaultOn: true },
+  { key: 'product', label: '제품명', defaultOn: true },
+  { key: 'qty', label: '수량', defaultOn: false },
+  { key: 'sales', label: '영업담당', defaultOn: false },
+  { key: 'line', label: '라인/CAPA', defaultOn: true },
+  { key: 'pilot', label: '시생산', defaultOn: true },
+  { key: 'status', label: '상태', defaultOn: true },
+];
+const COL_PREF_KEY = 'cosmax_col_pref_v1';
+function loadColPref() {
+  try {
+    const raw = localStorage.getItem(COL_PREF_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch(e) {}
+  const out = {};
+  COL_DEFS.forEach(c => { out[c.key] = c.defaultOn; });
+  return out;
+}
+let colPref = loadColPref();
+function saveColPref() {
+  try { localStorage.setItem(COL_PREF_KEY, JSON.stringify(colPref)); } catch(e) {}
+}
+function applyColumnVisibility() {
+  COL_DEFS.forEach(c => {
+    const visible = colPref[c.key] !== false;
+    document.querySelectorAll(`#list-table [data-col="${c.key}"]`).forEach(el => {
+      el.style.display = visible ? '' : 'none';
+    });
+  });
+  // Action column always visible
+}
+function toggleColumnMenu(ev) {
+  if (ev) ev.stopPropagation();
+  const menu = document.getElementById('col-toggle-menu');
+  if (!menu) return;
+  if (!menu.classList.contains('active')) {
+    menu.innerHTML = COL_DEFS.map(c => `
+      <label><input type="checkbox" data-col-key="${c.key}" ${colPref[c.key]!==false?'checked':''} onchange="onColToggle('${c.key}', this.checked)"> ${esc(c.label)}</label>
+    `).join('') + `<div style="border-top:1px solid #e2e8f0; margin-top:6px; padding-top:6px;"><button class="btn btn-outline btn-sm" onclick="resetColPref()" style="width:100%">기본값 복원</button></div>`;
+    menu.classList.add('active');
+    setTimeout(() => {
+      document.addEventListener('click', closeColMenuOutside);
+    }, 0);
+  } else {
+    menu.classList.remove('active');
+    document.removeEventListener('click', closeColMenuOutside);
+  }
+}
+function closeColMenuOutside(ev) {
+  const menu = document.getElementById('col-toggle-menu');
+  if (!menu) return;
+  if (!menu.contains(ev.target) && !ev.target.closest('.col-toggle-wrap')) {
+    menu.classList.remove('active');
+    document.removeEventListener('click', closeColMenuOutside);
+  }
+}
+function onColToggle(key, checked) {
+  colPref[key] = checked;
+  saveColPref();
+  applyColumnVisibility();
+}
+function resetColPref() {
+  colPref = {};
+  COL_DEFS.forEach(c => { colPref[c.key] = c.defaultOn; });
+  saveColPref();
+  applyColumnVisibility();
+  toggleColumnMenu();
+  toggleColumnMenu();
+}
+
+function renderWeekly() {
+  const weeks = {};
+  const addTo = (d, entry) => {
+    if (isNaN(d)) return;
+    const [y, w] = getIsoWeek(d);
+    const key = `${y}-${String(w).padStart(2,'0')}`;
+    if (!weeks[key]) weeks[key] = { display: `${y}년 ${w}주차`, rows: [] };
+    weeks[key].rows.push(entry);
+  };
+  requests.forEach(r=>{
+    const ups = r.updates || [];
+    ups.forEach(u=>{
+      if (!u.date) return;
+      addTo(new Date(u.date), { r, u });
+    });
+    if (ups.length === 0 && r.reqdate) {
+      addTo(new Date(r.reqdate), { r, u: null });
+    }
+  });
+
+  const keys = Object.keys(weeks).sort().reverse();
+  const container = document.getElementById('weekly-content');
+  if (keys.length===0) { container.innerHTML = '<div class="banner">등록된 항목이 없습니다.</div>'; return; }
+
+  container.innerHTML = keys.map(k=>{
+    const { display, rows } = weeks[k];
+    return `
+    <div class="weekly-week" style="background: var(--bg-surface); padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px;">
+      <h3 style="color: var(--text-primary); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 8px; font-size: 14px; font-weight: 600;">📅 ${esc(display)} <span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">(${rows.length}건)</span></h3>
+      <table style="font-size:12px">
+        <thead><tr><th style="width:90px;">업데이트일</th><th>품목코드</th><th>제품명</th><th>영업</th><th>라인/CAPA</th><th>단계</th><th>상태</th><th>업데이트 내용</th></tr></thead>
+        <tbody>
+          ${rows.map(({r,u})=>{
+            const capaOk = recordCapaOk(r);
+            return `
+            <tr style="cursor:pointer" onclick="viewDetail('${safeId(r.id)}')">
+              <td><strong>${dash(u?u.date:r.reqdate)}</strong></td>
+              <td><strong>${dash(r.fgcode)}</strong></td>
+              <td>${dash(r.product)}</td>
+              <td>${dash(r.sales)}</td>
+              <td>${dash(r.line)} / <span class="${capaOk?'capa-ok':'capa-missing'}">${capaOk?esc(r.capa):'⚠'}</span></td>
+              <td>${u?`<span class="update-stage">${dash(u.stage)}</span>`:'<span style="color:#94a3b8">업데이트 없음</span>'}</td>
+              <td><span class="badge ${statusBadge(r.status)}">${statusLabel(r.status)}</span></td>
+              <td style="color:#1e293b">${esc((u?(u.note||''):(r.memo||'')).substring(0,80))}${u && u.author?`<br><span style="font-size:11px;color:#64748b">✍ ${esc(u.author)}</span>`:''}</td>
+            </tr>
+          `;}).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;}).join('');
+}
+
+function getIsoWeek(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  return [date.getUTCFullYear(), weekNo];
+}
+
+// ==================== Tab ====================
+let currentTab = 'dashboard';
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c=>c.style.display='none');
+  document.getElementById('tab-'+name).style.display='block';
+  currentTab = name;
+  renderCurrent();
+}
+
+function renderCurrent() {
+  // Dashboard stats feed the urgent table, and are cheap; refresh them always.
+  renderStats();
+  if (currentTab === 'list') renderList();
+  else if (currentTab === 'weekly') renderWeekly();
+}
+
+function switchFormTab(name, el) {
+  document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.form-section').forEach(s=>s.style.display='none');
+  document.getElementById('form-'+name).style.display='block';
+}
+
+// ==================== Form ====================
+const FIELDS = ['docno','rev','reqdate','urgency','scope','client','brand','project','dept','sales','ri','qa','pd','prod',
+  'request','purpose','cost','fgcode','product','qty','batch','launch','launchqty','sampledate','sampleto',
+  'pilotdate','pilotdone',
+  'bulkcode','formula','batchsize','material','newmat','equipment','caution',
+  'sg_cond','sg_now','sg_next','visc_cond','visc_now','visc_next','hard_cond','hard_now','hard_next',
+  'bph_cond','bph_now','bph_next','appr_cond','appr_now','appr_next',
+  'fillwt','filltol','filltemp','labelvol','melttemp','fillnote',
+  'line','lineKey','capa','capaOk','filltype','fillspeed','nozzle','firstart',
+  'container','volume','torque','holder','tunnel',
+  'limit','function','newtech','pconcern','fconcern','scaleup',
+  'status','pilotstatus','richeck','pdcheck','memo','sig1','sig2','sig3','sig4'];
+
+const CHECKS = ['bom','msds','coa','drawing','limit','prior'];
+
+// Map each form field to the section it belongs to — used for relay-writing audit.
+const SECTION_FIELDS = {
+  basic: ['docno','rev','reqdate','urgency','scope','client','brand','project','dept','sales','ri','qa','pd','prod','request','purpose','cost'],
+  product: ['fgcode','product','qty','batch','pilotdate','pilotdone','launch','launchqty','sampledate','sampleto'],
+  bulk: ['bulkcode','formula','batchsize','material','newmat','equipment','caution',
+    'sg_cond','sg_now','sg_next','visc_cond','visc_now','visc_next','hard_cond','hard_now','hard_next',
+    'bph_cond','bph_now','bph_next','appr_cond','appr_now','appr_next'],
+  filling: ['fillwt','filltol','filltemp','labelvol','melttemp','fillnote',
+    'line','lineKey','capa','capaOk','filltype','fillspeed','nozzle','firstart',
+    'container','volume','torque','holder','tunnel'],
+  quality: ['limit','function','newtech','pconcern','fconcern','scaleup'],
+  approval: ['status','pilotstatus','richeck','pdcheck','memo','sig1','sig2','sig3','sig4'],
+};
+const SECTION_LABEL = { basic:'기본 정보', product:'제품 정보', bulk:'벌크 제조', filling:'충진/포장', quality:'품질/리스크', approval:'승인/진행', xp:'수출 정보' };
+
+function diffSection(section, oldRec, newRec) {
+  const fields = SECTION_FIELDS[section] || [];
+  for (const f of fields) {
+    if ((oldRec?.[f] ?? '') !== (newRec[f] ?? '')) return true;
+  }
+  if (section === 'quality') {
+    for (const c of CHECKS) {
+      if (!!(oldRec?.['chk_'+c]) !== !!newRec['chk_'+c]) return true;
+    }
+  }
+  return false;
+}
+
+function stampSectionMeta(oldRec, newRec) {
+  const prev = (oldRec && oldRec.sectionMeta && typeof oldRec.sectionMeta === 'object') ? oldRec.sectionMeta : {};
+  const meta = Object.assign({}, prev);
+  const editor = authorTag() || (hasProfile() ? (profile.email || deptLabel(profile.role, profile.dept)) : '');
+  const at = new Date().toISOString().substring(0,10);
+  const stamp = { editor, at };
+  Object.keys(SECTION_FIELDS).forEach(section => {
+    if (diffSection(section, oldRec, newRec)) meta[section] = stamp;
+  });
+  // xp section (nested)
+  const oldXp = oldRec?.xp || null;
+  const newXp = newRec.xp || null;
+  if (JSON.stringify(oldXp) !== JSON.stringify(newXp)) meta.xp = stamp;
+  return meta;
+}
+
+function sanitizeSectionMeta(sm) {
+  if (!sm || typeof sm !== 'object') return null;
+  const out = {};
+  const keys = Object.keys(SECTION_FIELDS).concat(['xp']);
+  keys.forEach(k => {
+    const v = sm[k];
+    if (v && typeof v === 'object') {
+      const editor = typeof v.editor === 'string' ? v.editor.slice(0, 120) : '';
+      const at = typeof v.at === 'string' ? v.at.slice(0, 20) : '';
+      if (editor || at) out[k] = { editor, at };
+    }
+  });
+  return Object.keys(out).length ? out : null;
+}
+
+// Export-info (overseas sales) — nested object on the record.
+function readExportFromForm() {
+  const countries = document.getElementById('f-xp-countries').value.trim();
+  const certSel = document.getElementById('f-xp-cert');
+  const cert = certSel ? Array.from(certSel.selectedOptions).map(o => o.value) : [];
+  const translation = document.getElementById('f-xp-translation').value;
+  const note = document.getElementById('f-xp-note').value.trim();
+  if (!countries && cert.length === 0 && !translation && !note) return null;
+  return { countries, cert, translation, note };
+}
+function writeExportToForm(xp) {
+  document.getElementById('f-xp-countries').value = (xp && xp.countries) || '';
+  const certSel = document.getElementById('f-xp-cert');
+  if (certSel) {
+    const set = new Set((xp && Array.isArray(xp.cert)) ? xp.cert : []);
+    Array.from(certSel.options).forEach(o => { o.selected = set.has(o.value); });
+  }
+  document.getElementById('f-xp-translation').value = (xp && xp.translation) || '';
+  document.getElementById('f-xp-note').value = (xp && xp.note) || '';
+}
+function updateExportSectionVisibility(hasData) {
+  const sec = document.getElementById('section-export');
+  if (!sec) return;
+  const show = hasData || isDept('overseas');
+  sec.style.display = show ? '' : 'none';
+}
+
+function openForm() {
+  if (isRole(ROLE_VIEWER)) { alert('참조자 프로필은 요청서 작성/편집이 제한됩니다.'); return; }
+  editingId = null;
+  currentUpdates = [];
+  editingUpdateIdx = null;
+  document.getElementById('form-title').textContent = '＋ 신규 시생산 요청서 작성';
+  document.getElementById('btn-delete').style.display = 'none';
+  clearForm();
+  resetPhotos();
+  resetDocs();
+  toggleLimitAttach();
+  const today = new Date().toISOString().substring(0,10);
+  document.getElementById('f-reqdate').value = today;
+  document.getElementById('upd-date').value = today;
+  document.getElementById('upd-save-btn').textContent = '＋ 업데이트 추가';
+  document.getElementById('upd-cancel-btn').style.display = 'none';
+  document.getElementById('f-docno').value = nextDocNo();
+  prefillFormFromProfile();
+  writeExportToForm(null);
+  updateExportSectionVisibility(false);
+  updateScopeTabs();
+  renderUpdatesList();
+  clearFieldErrors();
+  bindReqSummaryListeners();
+  refreshReqSummary();
+  document.getElementById('form-modal').classList.add('active');
+  openDefaultTabForProfile();
+}
+
+// Select initial form tab based on the user's dept so their typical work starts open.
+function openDefaultTabForProfile() {
+  const tabs = document.querySelectorAll('#form-modal .modal-tabs .modal-tab');
+  const byName = {};
+  tabs.forEach(t => {
+    const lbl = (t.dataset.origLabel || t.textContent || '').replace(/\s*\(제외\)\s*$/, '').trim();
+    if (lbl.includes('기본')) byName.basic = t;
+    else if (lbl.includes('제품')) byName.product = t;
+    else if (lbl.includes('벌크')) byName.bulk = t;
+    else if (lbl.includes('충진')) byName.filling = t;
+    else if (lbl.includes('품질')) byName.quality = t;
+    else if (lbl.includes('진행')) byName.updates = t;
+    else if (lbl.includes('승인')) byName.approval = t;
+  });
+  let target = byName.basic;
+  if (hasProfile()) {
+    if (isDept('ri')) target = byName.bulk || byName.basic;
+    else if (isRole(ROLE_REVIEWER)) target = byName.updates || byName.basic;
+    else if (isDept('overseas')) target = byName.basic;
+    else if (isDept('marketing')) target = byName.basic;
+  }
+  if (target) target.click();
+  else (tabs[0] && tabs[0].click());
+}
+
+// Fill department / staff fields based on current profile (author role).
+function prefillFormFromProfile() {
+  if (!hasProfile()) return;
+  const deptLbl = deptLabel(profile.role, profile.dept);
+  if (isRole(ROLE_AUTHOR)) {
+    const dEl = document.getElementById('f-dept');
+    if (dEl && !dEl.value) dEl.value = deptLbl;
+    if (profile.name) {
+      if (isDept('marketing') || isDept('overseas')) {
+        const s = document.getElementById('f-sales');
+        if (s && !s.value) s.value = profile.name;
+      } else if (isDept('ri')) {
+        const r = document.getElementById('f-ri');
+        if (r && !r.value) r.value = profile.name;
+      }
+    }
+  }
+  if (isRole(ROLE_REVIEWER) && profile.name) {
+    const p = document.getElementById('f-pd');
+    if (p && !p.value) p.value = profile.name;
+  }
+  const updAuthor = document.getElementById('upd-author');
+  if (updAuthor && !updAuthor.value) updAuthor.value = authorTag();
+}
+
+// "이름 / 부서" form used throughout update logs
+function authorTag() {
+  if (!hasProfile()) return '';
+  const lbl = deptLabel(profile.role, profile.dept);
+  if (profile.name && lbl) return `${profile.name} / ${lbl}`;
+  return profile.name || lbl || '';
+}
+
+function editItem(id) {
+  if (isRole(ROLE_VIEWER)) { alert('참조자 프로필은 요청서 편집이 제한됩니다.'); return; }
+  const r = requests.find(x=>x.id===id);
+  if (!r) return;
+  editingId = id;
+  currentUpdates = (r.updates || []).slice();
+  editingUpdateIdx = null;
+  document.getElementById('form-title').textContent = '✏ 요청서 편집 - ' + (r.product||'');
+  document.getElementById('btn-delete').style.display = 'inline-block';
+  clearForm();
+  // populate
+  FIELDS.forEach(k=>{
+    const el = document.getElementById('f-'+k);
+    if (el) el.value = r[k]||'';
+  });
+  CHECKS.forEach(c=>{
+    const el = document.getElementById('c-'+c);
+    if (el) el.checked = !!r['chk_'+c];
+  });
+  writeExportToForm(r.xp || null);
+  updateExportSectionVisibility(!!r.xp);
+  resetPhotos();
+  PHOTO_KINDS.forEach(k => {
+    const saved = safePhotoSrc(r['photo_' + k]);
+    if (saved) { currentPhotos[k] = saved; renderPhotoPreview(k); }
+  });
+  resetDocs();
+  DOC_KINDS.forEach(k => {
+    const saved = safeDocData(r['doc_' + k]);
+    if (saved) { currentDocs[k] = saved; renderDocInfo(k); }
+  });
+  toggleLimitAttach();
+  document.getElementById('upd-date').value = new Date().toISOString().substring(0,10);
+  document.getElementById('upd-save-btn').textContent = '＋ 업데이트 추가';
+  document.getElementById('upd-cancel-btn').style.display = 'none';
+  updateScopeTabs();
+  renderUpdatesList();
+  clearFieldErrors();
+  bindReqSummaryListeners();
+  refreshReqSummary();
+  document.getElementById('form-modal').classList.add('active');
+  document.querySelectorAll('.modal-tab')[0].click();
+}
+
+function clearForm() {
+  document.querySelectorAll('#form-modal input[type="text"], #form-modal input[type="date"], #form-modal textarea').forEach(el=>el.value='');
+  document.querySelectorAll('#form-modal input[type="checkbox"]').forEach(el=>el.checked=false);
+  document.querySelectorAll('#form-modal select').forEach(el=>el.selectedIndex=0);
+  document.getElementById('f-rev').value = 'Rev.0';
+}
+
+function closeForm() { document.getElementById('form-modal').classList.remove('active'); }
+
+function saveForm() {
+  clearFieldErrors();
+  const missing = [];
+  REQUIRED_FIELDS.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (el && !el.value.trim()) {
+      el.classList.add('field-error');
+      missing.push(f);
+    }
+  });
+  if (missing.length > 0) {
+    refreshReqSummary();
+    const first = missing[0];
+    focusReqField(first.id, first.tab);
+    showSnackbar(`필수 항목 ${missing.length}개를 입력해주세요: ${missing.map(m=>m.label).join(', ')}`);
+    return;
+  }
+  // Date sanity checks — warn but allow if user confirms
+  const reqdate = document.getElementById('f-reqdate').value;
+  const pilotdate = document.getElementById('f-pilotdate').value;
+  const pilotdone = document.getElementById('f-pilotdone').value;
+  const launch = document.getElementById('f-launch').value;
+  const warnings = [];
+  if (pilotdone && pilotdate && pilotdone < pilotdate) {
+    warnings.push(`시생산 완료일(${pilotdone})이 예정일(${pilotdate})보다 빠릅니다.`);
+  }
+  if (pilotdate && reqdate && pilotdate < reqdate) {
+    warnings.push(`시생산 예정일(${pilotdate})이 요청일(${reqdate})보다 빠릅니다.`);
+  }
+  if (launch && pilotdone && launch < pilotdone) {
+    warnings.push(`발매 예정일(${launch})이 시생산 완료일(${pilotdone})보다 빠릅니다.`);
+  }
+  if (warnings.length && !confirm('⚠ 날짜 순서 확인이 필요합니다:\n\n- ' + warnings.join('\n- ') + '\n\n그래도 저장하시겠습니까?')) {
+    return;
+  }
+  const data = { id: editingId || genId() };
+  FIELDS.forEach(f=>{
+    const el = document.getElementById('f-'+f);
+    if (el) data[f] = el.value;
+  });
+  CHECKS.forEach(c=>{
+    const el = document.getElementById('c-'+c);
+    if (el) data['chk_'+c] = el.checked;
+  });
+  data.updates = currentUpdates.slice();
+  PHOTO_KINDS.forEach(k => { data['photo_' + k] = safePhotoSrc(currentPhotos[k]) || null; });
+  DOC_KINDS.forEach(k => { data['doc_' + k] = safeDocData(currentDocs[k]) || null; });
+  const xp = readExportFromForm();
+  if (xp) data.xp = xp;
+  data.status = deriveStatus(data.status, data.richeck, data.pdcheck);
+
+  const prevRec = editingId ? requests.find(r => r.id === editingId) : null;
+  const newMeta = stampSectionMeta(prevRec, data);
+  if (Object.keys(newMeta).length) data.sectionMeta = newMeta;
+
+  if (editingId) {
+    requests = requests.map(r=>r.id===editingId?data:r);
+  } else {
+    requests.unshift(data);
+  }
+  if (!saveData()) return;
+  const wasNew = !editingId;
+  closeForm();
+  renderCurrent();
+  showSnackbar(wasNew ? '✓ 신규 요청서가 저장되었습니다.' : '✓ 저장되었습니다.');
+}
+
+function deleteItem() {
+  if (!editingId) return;
+  const r = requests.find(x => x.id === editingId);
+  const label = r ? (r.product || r.fgcode || r.docno || r.id) : editingId;
+  if (!confirm(`정말 삭제하시겠습니까?\n\n· ${label}\n· 문서번호: ${r?.docno || '-'}\n\n삭제 후 8초간 [되돌리기] 가능합니다.`)) return;
+  const idx = requests.findIndex(r=>r.id===editingId);
+  if (idx === -1) return;
+  const backup = requests[idx];
+  requests.splice(idx, 1);
+  if (!saveData()) {
+    requests.splice(idx, 0, backup);
+    return;
+  }
+  closeForm();
+  renderCurrent();
+  showSnackbar(
+    `🗑 삭제됨: ${backup.product || backup.fgcode || backup.id}`,
+    () => {
+      requests.splice(Math.min(idx, requests.length), 0, backup);
+      if (saveData()) {
+        renderCurrent();
+        showSnackbar('↩ 되돌렸습니다.');
+      }
+    },
+    8000
+  );
+}
+
+// ==================== Snackbar ====================
+let snackTimer = null;
+let snackUndoFn = null;
+function showSnackbar(msg, undoFn, duration) {
+  hideSnackbar();
+  const bar = document.getElementById('snackbar');
+  document.getElementById('snack-msg').textContent = msg;
+  const undoBtn = document.getElementById('snack-undo');
+  if (typeof undoFn === 'function') {
+    snackUndoFn = undoFn;
+    undoBtn.style.display = '';
+  } else {
+    snackUndoFn = null;
+    undoBtn.style.display = 'none';
+  }
+  bar.classList.add('active');
+  snackTimer = setTimeout(hideSnackbar, duration || 5000);
+}
+function hideSnackbar() {
+  if (snackTimer) { clearTimeout(snackTimer); snackTimer = null; }
+  const bar = document.getElementById('snackbar');
+  if (bar) bar.classList.remove('active');
+  snackUndoFn = null;
+}
+function handleSnackUndo() {
+  const fn = snackUndoFn;
+  hideSnackbar();
+  if (fn) fn();
+}
+
+// ==================== Progress Updates ====================
+function saveUpdate() {
+  const date = document.getElementById('upd-date').value;
+  const author = document.getElementById('upd-author').value.trim();
+  const stage = document.getElementById('upd-stage').value;
+  const note = document.getElementById('upd-note').value.trim();
+  if (!date) { alert('업데이트 일자를 선택해주세요.'); return; }
+  if (!note) { alert('진행 내용을 입력해주세요.'); return; }
+  const entry = { date, author, stage, note };
+  if (editingUpdateIdx !== null) {
+    currentUpdates[editingUpdateIdx] = entry;
+    editingUpdateIdx = null;
+    document.getElementById('upd-save-btn').textContent = '＋ 업데이트 추가';
+    document.getElementById('upd-cancel-btn').style.display = 'none';
+  } else {
+    currentUpdates.push(entry);
+  }
+  document.getElementById('upd-author').value = '';
+  document.getElementById('upd-note').value = '';
+  document.getElementById('upd-stage').selectedIndex = 0;
+  renderUpdatesList();
+}
+
+function editUpdate(idx) {
+  const u = currentUpdates[idx];
+  if (!u) return;
+  editingUpdateIdx = idx;
+  document.getElementById('upd-date').value = u.date || '';
+  document.getElementById('upd-author').value = u.author || '';
+  document.getElementById('upd-note').value = u.note || '';
+  const stageSel = document.getElementById('upd-stage');
+  for (let i=0; i<stageSel.options.length; i++) {
+    if (stageSel.options[i].value === u.stage || stageSel.options[i].textContent === u.stage) {
+      stageSel.selectedIndex = i; break;
+    }
+  }
+  document.getElementById('upd-save-btn').textContent = '💾 수정 저장';
+  document.getElementById('upd-cancel-btn').style.display = 'inline-block';
+  document.getElementById('upd-date').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function cancelEditUpdate() {
+  editingUpdateIdx = null;
+  document.getElementById('upd-save-btn').textContent = '＋ 업데이트 추가';
+  document.getElementById('upd-cancel-btn').style.display = 'none';
+  document.getElementById('upd-author').value = '';
+  document.getElementById('upd-note').value = '';
+  document.getElementById('upd-stage').selectedIndex = 0;
+  const today = new Date().toISOString().substring(0,10);
+  document.getElementById('upd-date').value = today;
+}
+
+function removeUpdate(idx) {
+  if (!confirm('이 업데이트를 삭제하시겠습니까?')) return;
+  currentUpdates.splice(idx, 1);
+  if (editingUpdateIdx === idx) cancelEditUpdate();
+  else if (editingUpdateIdx !== null && editingUpdateIdx > idx) editingUpdateIdx--;
+  renderUpdatesList();
+}
+
+function renderUpdatesList() {
+  const list = document.getElementById('updates-list');
+  if (currentUpdates.length === 0) {
+    list.innerHTML = '<div class="update-empty">아직 등록된 업데이트가 없습니다. 아래에서 추가해주세요.</div>';
+    return;
+  }
+  const sorted = currentUpdates.map((u,i)=>({...u, _i:i})).sort((a,b)=>new Date(b.date||'')-new Date(a.date||''));
+  list.innerHTML = sorted.map(u=>`
+    <div class="update-item" ${editingUpdateIdx===u._i?'style="border-left-color:#f59e0b; background:#fffbeb;"':''}>
+      <div class="update-head">
+        <div class="update-meta">
+          <span class="update-date">${dash(u.date)}</span>
+          <span class="update-stage">${dash(u.stage)}</span>
+          <span>✍ ${dash(u.author)}</span>
+          ${editingUpdateIdx===u._i?'<span style="color:#d97706;font-weight:700;">편집 중</span>':''}
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="update-del" style="color:#3b82f6;" onclick="editUpdate(${u._i})">✏ 편집</button>
+          <button class="update-del" onclick="removeUpdate(${u._i})">✕ 삭제</button>
+        </div>
+      </div>
+      <div class="update-note">${escapeHtml(u.note||'')}</div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function esc(s) { return escapeHtml(s); }
+function dash(s) { return (s == null || s === '') ? '-' : escapeHtml(s); }
+function safeId(s) { return /^R\d+$/.test(String(s)) ? s : ''; }
+// Sync `f-line` free text with the dropdown choice; keep free text if user picked OTHER or manually typed.
+function onLineKeyChange() {
+  const sel = document.getElementById('f-lineKey');
+  const txt = document.getElementById('f-line');
+  if (!sel || !txt) return;
+  const label = sel.options[sel.selectedIndex].textContent;
+  if (!sel.value || sel.value === 'OTHER') return;
+  txt.value = label;
+}
+
+function isCapaOk(v) {
+  if (v == null) return false;
+  const s = String(v).trim();
+  if (!s) return false;
+  return !/^(미확인|미배정|확인중|확인\s*중|없음|tbd|n\/a|-)$/i.test(s);
+}
+// Prefer explicit capaOk flag if set; fall back to heuristic on free text.
+function recordCapaOk(r) {
+  if (!r) return false;
+  if (r.capaOk === 'OK') return true;
+  if (r.capaOk === 'NG') return false;
+  return isCapaOk(r.capa);
+}
+function deriveStatus(current, richeck, pdcheck) {
+  if (current === 'issue') return current;
+  const done = v => v === '완료';
+  const moving = v => v === '진행중' || v === '완료';
+  if (done(richeck) && done(pdcheck)) return 'done';
+  if ((moving(richeck) || moving(pdcheck)) && current === 'pending') return 'progress';
+  return current;
+}
+function safePhotoSrc(s) {
+  if (typeof s !== 'string') return '';
+  return /^data:image\/(png|jpe?g|gif|webp|bmp|svg\+xml);base64,[A-Za-z0-9+/=]+$/i.test(s) ? s : '';
+}
+
+function handlePhotoUpload(event, kind) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!file.type || !file.type.startsWith('image/')) {
+    alert('이미지 파일만 업로드 가능합니다.');
+    event.target.value = ''; return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      const MAX_SIZE = 800;
+      
+      if (width > height) {
+        if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+      } else {
+        if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      currentPhotos[kind] = compressedDataUrl;
+      renderPhotoPreview(kind);
+    };
+    img.onerror = () => { alert('이미지 처리 중 오류가 발생했습니다.'); event.target.value = ''; };
+    img.src = e.target.result;
+  };
+  reader.onerror = () => { alert('이미지 읽기 실패'); event.target.value = ''; };
+  reader.readAsDataURL(file);
+}
+
+function renderPhotoPreview(kind) {
+  const el = document.getElementById('photo-' + kind + '-preview');
+  if (!el) return;
+  const src = safePhotoSrc(currentPhotos[kind]);
+  if (!src) { el.innerHTML = ''; return; }
+  el.innerHTML = `<img src="${src}" alt="${kind} 사진"><button type="button" class="btn btn-outline btn-sm" onclick="removePhoto('${kind}')">사진 제거</button>`;
+}
+
+function removePhoto(kind) {
+  currentPhotos[kind] = null;
+  const fileInput = document.getElementById('f-photo-' + kind);
+  if (fileInput) fileInput.value = '';
+  renderPhotoPreview(kind);
+}
+
+function resetPhotos() {
+  PHOTO_KINDS.forEach(k => {
+    currentPhotos[k] = null;
+    const el = document.getElementById('f-photo-' + k);
+    if (el) el.value = '';
+    renderPhotoPreview(k);
+  });
+}
+
+// ==================== Attached Documents (per-checklist-item file upload) ====================
+function fmtFileSize(n) {
+  if (!n || n < 0) return '';
+  if (n < 1024) return n + ' B';
+  if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+  return (n/1024/1024).toFixed(2) + ' MB';
+}
+function safeDocData(d) {
+  if (!d || typeof d !== 'object') return null;
+  const name = typeof d.name === 'string' ? d.name.slice(0, 200).replace(/[\r\n]/g, '') : '';
+  const type = typeof d.type === 'string' ? d.type.slice(0, 100) : '';
+  const size = typeof d.size === 'number' && d.size >= 0 ? Math.floor(d.size) : 0;
+  const data = typeof d.data === 'string' && /^data:[\w./+-]+;base64,[A-Za-z0-9+/=]+$/.test(d.data) ? d.data : '';
+  if (!name || !data) return null;
+  return { name, type, size, data };
+}
+function handleDocUpload(event, kind) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (file.size > DOC_MAX_BYTES) {
+    showSnackbar(`⚠ 파일이 너무 큽니다 (${fmtFileSize(file.size)}). 최대 ${fmtFileSize(DOC_MAX_BYTES)}까지 업로드 가능합니다.`, null, 6000);
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+      showSnackbar('⚠ 파일 읽기 실패');
+      event.target.value = ''; return;
+    }
+    currentDocs[kind] = {
+      name: file.name || (kind + '.bin'),
+      type: file.type || 'application/octet-stream',
+      size: file.size || 0,
+      data: dataUrl
+    };
+    // Auto-check the corresponding checkbox
+    const cb = document.getElementById('c-' + kind);
+    if (cb) cb.checked = true;
+    renderDocInfo(kind);
+  };
+  reader.onerror = () => { showSnackbar('⚠ 파일 읽기 실패'); event.target.value = ''; };
+  reader.readAsDataURL(file);
+}
+function renderDocInfo(kind) {
+  const info = document.getElementById('doc-info-' + kind);
+  const actions = document.getElementById('doc-actions-' + kind);
+  const item = document.getElementById('doc-item-' + kind);
+  if (!info || !actions || !item) return;
+  const d = currentDocs[kind];
+  if (d && d.data) {
+    info.innerHTML = `<span class="doc-name">${esc(d.name)}</span> <span style="color:#64748b;">(${esc(fmtFileSize(d.size))})</span>`;
+    actions.innerHTML =
+      `<button type="button" onclick="downloadCurrentDoc('${kind}')" title="다운로드">📥</button>` +
+      `<button type="button" onclick="document.getElementById('f-doc-${kind}').click()" title="다른 파일로 교체">🔄</button>` +
+      `<button type="button" class="doc-remove" onclick="removeDoc('${kind}')" title="제거">✕</button>`;
+    item.classList.add('has-file');
+  } else {
+    info.innerHTML = `<span class="doc-empty">선택된 파일 없음</span>`;
+    actions.innerHTML = `<button type="button" onclick="document.getElementById('f-doc-${kind}').click()">📎 선택</button>`;
+    item.classList.remove('has-file');
+  }
+}
+function downloadCurrentDoc(kind) {
+  const d = currentDocs[kind];
+  if (!d || !d.data) return;
+  triggerDownload(d.name, d.data);
+}
+function downloadDocFromRecord(reqId, kind) {
+  const r = requests.find(x => x.id === reqId);
+  if (!r) return;
+  const d = safeDocData(r['doc_' + kind]);
+  if (!d) return;
+  triggerDownload(d.name, d.data);
+}
+function triggerDownload(name, dataUrl) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = name || 'attachment.bin';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+function removeDoc(kind) {
+  currentDocs[kind] = null;
+  const fi = document.getElementById('f-doc-' + kind);
+  if (fi) fi.value = '';
+  renderDocInfo(kind);
+}
+function resetDocs() {
+  DOC_KINDS.forEach(k => {
+    currentDocs[k] = null;
+    const el = document.getElementById('f-doc-' + k);
+    if (el) el.value = '';
+    renderDocInfo(k);
+  });
+}
+
+function toggleLimitAttach() {
+  const sel = document.getElementById('f-limit');
+  const wrap = document.getElementById('limit-attach-wrap');
+  if (!sel || !wrap) return;
+  const show = sel.value === '있음 (첨부)';
+  wrap.style.display = show ? '' : 'none';
+  if (!show) {
+    currentPhotos.limit = null;
+    const fi = document.getElementById('f-photo-limit');
+    if (fi) fi.value = '';
+    renderPhotoPreview('limit');
+  }
+}
+
+function nextDocNo() {
+  const year = new Date().getFullYear();
+  const prefix = 'REQ-' + year + '-';
+  let maxSeq = 0;
+  requests.forEach(r => {
+    if (r && typeof r.docno === 'string' && r.docno.startsWith(prefix)) {
+      const n = parseInt(r.docno.slice(prefix.length), 10);
+      if (!isNaN(n) && n > maxSeq) maxSeq = n;
+    }
+  });
+  return prefix + String(maxSeq + 1).padStart(4, '0');
+}
+
+function renderAttachments(r) {
+  const items = DOC_KINDS.map(k => ({ key: k, chkKey: 'chk_'+k, docKey: 'doc_'+k, label: DOC_LABELS[k] }));
+  const sid = safeId(r.id);
+  const rows = items.map(it => {
+    const checked = !!r[it.chkKey];
+    const doc = safeDocData(r[it.docKey]);
+    let badge;
+    if (doc) {
+      badge = `<span style="background:var(--success-soft);color:#047857;border:1px solid var(--success-border);padding:3px 10px;border-radius:var(--radius-sm);font-size:11px;margin:2px 4px 2px 0;display:inline-flex;align-items:center;gap:6px;">
+        ✓ <strong>${esc(it.label)}</strong>
+        <button type="button" onclick="downloadDocFromRecord('${sid}','${it.key}')" title="${esc(doc.name)} (${esc(fmtFileSize(doc.size))})" style="background:#fff;border:1px solid var(--success-border);border-radius:var(--radius-sm);padding:1px 6px;cursor:pointer;font-size:11px;color:#047857;">📥 ${esc(doc.name)}</button>
+      </span>`;
+    } else if (checked) {
+      badge = `<span style="background:var(--warning-soft);color:#92400e;border:1px solid var(--warning-border);padding:3px 10px;border-radius:var(--radius-sm);font-size:11px;margin:2px 4px 2px 0;display:inline-block;">✓ ${esc(it.label)} <span style="font-size:10px;color:#a16207;">(체크만, 파일 미첨부)</span></span>`;
+    } else {
+      badge = `<span style="background:var(--danger-soft);color:#991b1b;border:1px solid var(--danger-border);padding:3px 10px;border-radius:var(--radius-sm);font-size:11px;margin:2px 4px 2px 0;display:inline-block;">✗ ${esc(it.label)}</span>`;
+    }
+    return badge;
+  });
+  const allOk = items.every(it => r[it.chkKey]);
+  const noFiles = items.every(it => !safeDocData(r[it.docKey]));
+  const warn = !allOk ? '<div style="color:#ef4444;font-weight:600;margin-bottom:6px;">⚠ 미체크 항목 있음 (No Data, No Work)</div>' : '';
+  const noFileWarn = (allOk && noFiles) ? '<div style="color:#a16207;font-size:11px;margin-bottom:6px;">ℹ 모두 체크됐지만 첨부 파일은 없습니다.</div>' : '';
+  return warn + noFileWarn + rows.join('');
+}
+
+// ==================== Quick Update ====================
+let quickTargetId = null;
+
+function openQuickUpdate(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (isRole(ROLE_VIEWER)) { alert('참조자 프로필은 업데이트가 제한됩니다.'); return; }
+  const r = requests.find(x=>x.id===id);
+  if (!r) return;
+  quickTargetId = id;
+  const prevStatus = `<span class="badge ${statusBadge(r.status)}">${statusLabel(r.status)}</span>`;
+  const capaOk = recordCapaOk(r);
+  document.getElementById('quick-summary').innerHTML =
+    `<strong>${dash(r.fgcode)}</strong> · ${dash(r.product)}<br>` +
+    `현재 상태: ${prevStatus} · CAPA: <span class="${capaOk?'capa-ok':'capa-missing'}">${capaOk?esc(r.capa):'⚠ 미확인'}</span>`;
+  document.getElementById('q-status').value = r.status || 'pending';
+  setSelect('q-richeck', r.richeck || '대기');
+  setSelect('q-pdcheck', r.pdcheck || '대기');
+  document.getElementById('q-author').value = authorTag();
+  document.getElementById('q-memo').value = '';
+  document.getElementById('q-stage').selectedIndex = 0;
+  document.getElementById('quick-modal').classList.add('active');
+}
+
+function setSelect(id, value) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  for (let i=0; i<sel.options.length; i++) {
+    if (sel.options[i].value === value || sel.options[i].textContent === value) {
+      sel.selectedIndex = i; return;
+    }
+  }
+  sel.selectedIndex = 0;
+}
+
+function saveQuickUpdate() {
+  if (!quickTargetId) return;
+  const r = requests.find(x=>x.id===quickTargetId);
+  if (!r) return;
+  const newStatus = document.getElementById('q-status').value;
+  const newRi = document.getElementById('q-richeck').value;
+  const newPd = document.getElementById('q-pdcheck').value;
+  const author = document.getElementById('q-author').value.trim();
+  const stage = document.getElementById('q-stage').value;
+  const memo = document.getElementById('q-memo').value.trim();
+
+  const changes = [];
+  if (r.status !== newStatus) changes.push(`상태: ${statusLabel(r.status)} → ${statusLabel(newStatus)}`);
+  if ((r.richeck||'대기') !== newRi) changes.push(`연구소 검토: ${r.richeck||'대기'} → ${newRi}`);
+  if ((r.pdcheck||'대기') !== newPd) changes.push(`공정개발 확인: ${r.pdcheck||'대기'} → ${newPd}`);
+
+  if (changes.length === 0 && !memo) {
+    alert('변경된 항목 또는 메모 내용이 없습니다.');
+    return;
+  }
+
+  r.status = deriveStatus(newStatus, newRi, newPd);
+  r.richeck = newRi;
+  r.pdcheck = newPd;
+  if (memo) r.memo = memo;
+
+  const noteLines = [];
+  if (changes.length) noteLines.push('[변경] ' + changes.join(' / '));
+  if (r.status !== newStatus) noteLines.push(`[자동] 상태 → ${statusLabel(r.status)}`);
+  if (memo) noteLines.push(memo);
+  if (noteLines.length) {
+    r.updates = r.updates || [];
+    r.updates.push({
+      date: new Date().toISOString().substring(0,10),
+      author: author || '-',
+      stage,
+      note: noteLines.join('\n')
+    });
+  }
+
+  if (!saveData()) return;
+  document.getElementById('quick-modal').classList.remove('active');
+  quickTargetId = null;
+  renderCurrent();
+  showSnackbar('⚡ 빠른 업데이트가 반영되었습니다.');
+}
+
+// Filter the updates list down to PD-origin entries.
+// Matches stage "공정 검토" or author tagged with "공정개발".
+function renderPdTimeline(ups) {
+  const pdOnly = (ups || []).filter(u => {
+    if (!u) return false;
+    if ((u.stage || '').includes('공정')) return true;
+    if ((u.author || '').includes('공정개발')) return true;
+    return false;
+  });
+  if (!pdOnly.length) return '';
+  return `
+    <div class="section">
+      <div class="section-title">🛠 공정개발 의견 이력 <span class="pd-badge">PD</span></div>
+      <p class="hint" style="margin-bottom:10px;">공정개발팀이 남긴 의견만 시간순으로 모은 뷰입니다.</p>
+      ${pdOnly.map(u=>`
+        <div class="update-item" style="border-left:3px solid #3b82f6;">
+          <div class="update-head">
+            <div class="update-meta">
+              <span class="update-date">${dash(u.date)}</span>
+              <span class="update-stage">${dash(u.stage)}</span>
+              <span>✍ ${dash(u.author)}</span>
+            </div>
+          </div>
+          <div class="update-note">${escapeHtml(u.note||'')}</div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+// ==================== Detail ====================
+function viewDetail(id) {
+  const r = requests.find(x=>x.id===id);
+  if (!r) return;
+  const body = document.getElementById('detail-body');
+  const row = (k,v) => (v == null || v === '') ? '' : `<div class="detail-row"><div class="key">${esc(k)}</div><div class="val" style="white-space:pre-wrap">${esc(v)}</div></div>`;
+  const rowHtml = (k,html) => html ? `<div class="detail-row"><div class="key">${esc(k)}</div><div class="val">${html}</div></div>` : '';
+  const bulkRow = (name, cond, now, next) => (cond||now||next) ?
+    `<div class="detail-row"><div class="key">${esc(name)}</div><div class="val">조건: ${esc(cond)||'-'} / 즉시: <strong>${esc(now)||'-'}</strong> / 익일: <strong>${esc(next)||'-'}</strong></div></div>` : '';
+  const smStamp = (sectionKey) => {
+    const sm = (r.sectionMeta || {})[sectionKey];
+    if (!sm || (!sm.editor && !sm.at)) return '';
+    return `<div style="font-size:11px;color:#64748b;margin-top:4px;">✍ 편집: ${esc(sm.editor||'-')} · ${esc(sm.at||'-')}</div>`;
+  };
+  const ups = (r.updates||[]).slice().sort((a,b)=>new Date(b.date||'')-new Date(a.date||''));
+  const capaOk = recordCapaOk(r);
+
+  const scopeCls = scopeBadge(r.scope);
+  const scopeRow = r.scope && scopeCls ?
+    `<div class="detail-row"><div class="key">시생산 범위</div><div class="val"><span class="badge ${scopeCls}">${esc(r.scope)}</span></div></div>` : '';
+  const psCls = pilotStatusBadge(r.pilotstatus);
+  const pilotStatusRow = r.pilotstatus && psCls ?
+    `<div class="detail-row"><div class="key">시생산 상태</div><div class="val"><span class="badge ${psCls}">${esc(r.pilotstatus)}</span></div></div>` : '';
+  body.innerHTML = `
+    <div class="section">
+      <div class="section-title">📌 문서 관리 / 요청 정보</div>
+      ${smStamp('basic')}
+      ${row('문서번호', r.docno)}${row('개정', r.rev)}
+      ${row('요청일', r.reqdate)}${rowHtml('긴급도', `<span class="badge ${urgencyBadge(r.urgency)}">${urgencyLabel(r.urgency)}</span>`)}
+      ${scopeRow}
+      ${rowHtml('상태', `<span class="badge ${statusBadge(r.status)}">${statusLabel(r.status)}</span>`)}
+    </div>
+    <div class="section">
+      <div class="section-title">👥 프로젝트</div>
+      ${row('고객사', r.client)}${row('브랜드', r.brand)}${row('프로젝트명', r.project)}
+      ${row('부서', r.dept)}${row('영업담당', r.sales)}${row('연구담당', r.ri)}
+      ${row('품질담당', r.qa)}${row('공정개발', r.pd)}
+    </div>
+    <div class="section">
+      <div class="section-title">📦 제품</div>
+      ${smStamp('product')}
+      ${row('완제품 코드', r.fgcode)}${row('제품명', r.product)}${row('수량', r.qty)}
+      ${row('배치번호', r.batch)}${row('발매 예정일', r.launch)}
+      ${row('시생산 예정일', r.pilotdate)}${row('시생산 완료일', r.pilotdone)}
+      ${pilotStatusRow}
+    </div>
+    <div class="section">
+      <div class="section-title">🧪 벌크 제조</div>
+      ${smStamp('bulk')}
+      ${row('벌크 코드', r.bulkcode)}${row('처방번호', r.formula)}${row('배치 사이즈', r.batchsize)}
+      ${row('제조 장비', r.equipment)}${row('주의사항', r.caution)}
+      ${bulkRow('비중', r.sg_cond, r.sg_now, r.sg_next)}
+      ${bulkRow('점도 (cps)', r.visc_cond, r.visc_now, r.visc_next)}
+      ${bulkRow('경도', r.hard_cond, r.hard_now, r.hard_next)}
+      ${bulkRow('벌크 pH', r.bph_cond, r.bph_now, r.bph_next)}
+      ${bulkRow('외관/색상', r.appr_cond, r.appr_now, r.appr_next)}
+    </div>
+    <div class="section">
+      <div class="section-title">🚰 충진/포장</div>
+      ${smStamp('filling')}
+      ${row('충진량 (g)', r.fillwt)}${row('허용오차', r.filltol)}${row('충진 온도', r.filltemp)}
+      ${row('표시 용량', r.labelvol)}${row('용해 온도', r.melttemp)}${row('특이사항', r.fillnote)}
+      ${row('용기', r.container)}${row('홀더/몰드', r.holder)}
+      ${rowHtml('용기 사진', safePhotoSrc(r.photo_container) ? `<img class="photo-view" src="${safePhotoSrc(r.photo_container)}">` : '')}
+      ${rowHtml('코딩 사진', safePhotoSrc(r.photo_coding) ? `<img class="photo-view" src="${safePhotoSrc(r.photo_coding)}">` : '')}
+      ${rowHtml('기타 사진', safePhotoSrc(r.photo_etc) ? `<img class="photo-view" src="${safePhotoSrc(r.photo_etc)}">` : '')}
+    </div>
+    <div class="section">
+      <div class="section-title">🎯 품질 / 리스크</div>
+      ${smStamp('quality')}
+      ${row('한도견본 유무', r.limit)}
+      ${rowHtml('한도견본 사진', safePhotoSrc(r.photo_limit) ? `<img class="photo-view" src="${safePhotoSrc(r.photo_limit)}">` : '')}
+      ${row('기능 검사 항목', r.function)}
+      ${row('신기술 사용', r.newtech)}
+      ${row('제조 공정 우려사항', r.pconcern)}
+      ${row('충진 공정 우려사항', r.fconcern)}
+      ${row('양산 이관 고려사항', r.scaleup)}
+      <div class="detail-row"><div class="key">첨부문서</div><div class="val">${renderAttachments(r)}</div></div>
+    </div>
+    <div class="section">
+      <div class="section-title">🛠 공정개발 입력 <span class="pd-badge">PD</span></div>
+      ${row('생산라인', r.line)}
+      ${rowHtml('생산 CAPA', capaOk ? esc(r.capa) : '<span class="capa-missing">⚠ 미확인</span>')}
+      ${row('충진 방식', r.filltype)}${row('충진 속도', r.fillspeed)}
+      ${row('노즐 사이즈', r.nozzle)}${row('초물 검사', r.firstart)}
+    </div>
+    ${r.xp ? `
+    <div class="section">
+      <div class="section-title">🌍 수출 정보</div>
+      ${smStamp('xp')}
+      ${row('수출 국가/지역', r.xp.countries)}
+      ${row('인허가 유형', (r.xp.cert||[]).join(', '))}
+      ${row('번역 필요', r.xp.translation)}
+      ${row('금지 성분/기타', r.xp.note)}
+    </div>` : ''}
+    <div class="section">
+      <div class="section-title">📝 진행사항 업데이트 (${ups.length}건)</div>
+      ${ups.length ? ups.map(u=>`
+        <div class="update-item">
+          <div class="update-head">
+            <div class="update-meta">
+              <span class="update-date">${dash(u.date)}</span>
+              <span class="update-stage">${dash(u.stage)}</span>
+              <span>✍ ${dash(u.author)}</span>
+            </div>
+          </div>
+          <div class="update-note">${escapeHtml(u.note||'')}</div>
+        </div>
+      `).join('') : '<div class="update-empty">등록된 업데이트가 없습니다.</div>'}
+    </div>
+    ${renderPdTimeline(ups)}
+    <div class="section">
+      <div class="section-title">✍ 진행 / 승인</div>
+      ${smStamp('approval')}
+      ${row('연구소 검토', r.richeck)}${row('공정개발 확인', r.pdcheck)}
+      ${row('메모', r.memo)}
+      ${row('의뢰 서명', r.sig1)}${row('검토 서명', r.sig2)}${row('접수 서명', r.sig3)}${row('최종 승인', r.sig4)}
+    </div>
+  `;
+  document.getElementById('detail-edit').onclick = ()=>{
+    document.getElementById('detail-modal').classList.remove('active');
+    editItem(id);
+  };
+  document.getElementById('detail-quick').onclick = ()=>{
+    document.getElementById('detail-modal').classList.remove('active');
+    openQuickUpdate(id);
+  };
+  document.getElementById('detail-duplicate').onclick = ()=>{
+    document.getElementById('detail-modal').classList.remove('active');
+    duplicateItem(id);
+  };
+  document.getElementById('detail-copy').onclick = ()=>{
+    copyRequestToClipboard(id);
+  };
+  document.getElementById('detail-modal').classList.add('active');
+}
+
+function copyRequestToClipboard(id) {
+  const r = requests.find(x=>x.id===id);
+  if (!r) return;
+  const line = (label, val) => (val == null || val === '') ? null : `${label}: ${val}`;
+  const parts = [
+    `[시생산 요청서] ${r.docno || ''} (Rev.${(r.rev||'').replace(/^Rev\.?/i,'')||'0'})`,
+    '',
+    line('요청일', r.reqdate),
+    line('긴급도', urgencyLabel(r.urgency)),
+    line('진행 범위', r.scope),
+    line('현재 상태', statusLabel(r.status)),
+    '',
+    '■ 프로젝트',
+    line('고객사', r.client),
+    line('브랜드', r.brand),
+    line('프로젝트명', r.project),
+    line('부서', r.dept),
+    line('영업 담당자', r.sales),
+    line('연구 담당자', r.ri),
+    line('공정개발 담당자', r.pd),
+    '',
+    '■ 제품',
+    line('완제품 코드', r.fgcode),
+    line('제품명', r.product),
+    line('시생산 수량', r.qty),
+    line('배치 번호', r.batch),
+    line('시생산 예정일', r.pilotdate),
+    line('시생산 완료일', r.pilotdone),
+    line('발매 예정일', r.launch),
+    '',
+    '■ 요청 내용',
+    r.request || '',
+    r.purpose ? '\n[목적]\n' + r.purpose : '',
+    '',
+    '■ 벌크 / 충진',
+    line('벌크 코드', r.bulkcode),
+    line('처방번호', r.formula),
+    line('배치 사이즈', r.batchsize),
+    line('생산라인', r.line),
+    line('CAPA', r.capa),
+    line('충진 방식', r.filltype),
+    '',
+    '■ 진행',
+    line('연구소 검토', r.richeck),
+    line('공정개발 확인', r.pdcheck),
+    line('시생산 상태', r.pilotstatus),
+    line('메모', r.memo),
+  ];
+  if (r.xp) {
+    parts.push('', '■ 수출 정보',
+      line('국가/지역', r.xp.countries),
+      line('인허가', (r.xp.cert||[]).join(', ')),
+      line('번역 필요', r.xp.translation),
+      line('금지 성분/기타', r.xp.note));
+  }
+  const docList = DOC_KINDS
+    .map(k => { const d = safeDocData(r['doc_'+k]); return d ? `${DOC_LABELS[k]}: ${d.name} (${fmtFileSize(d.size)})` : null; })
+    .filter(Boolean);
+  if (docList.length) {
+    parts.push('', '■ 첨부 파일', ...docList);
+  }
+  const latest = latestUpdate(r);
+  if (latest) {
+    parts.push('', '■ 최근 업데이트', `${latest.date || '-'} · ${latest.author || '-'} · ${latest.stage || '-'}`, latest.note || '');
+  }
+  const text = parts.filter(p => p != null).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    return ok;
+  };
+
+  const done = (ok) => showSnackbar(ok ? '📋 클립보드에 복사되었습니다.' : '⚠ 복사 실패 — 브라우저 권한을 확인하세요.');
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(()=>done(true)).catch(()=>done(fallback()));
+  } else {
+    done(fallback());
+  }
+}
+
+function duplicateItem(id) {
+  if (isRole(ROLE_VIEWER)) { alert('참조자 프로필은 복제가 제한됩니다.'); return; }
+  const src = requests.find(x=>x.id===id);
+  if (!src) return;
+  const CLEAR_FIELDS = ['docno','reqdate','batch','pilotdate','pilotdone','launch','sampledate',
+    'sg_now','sg_next','visc_now','visc_next','hard_now','hard_next',
+    'bph_now','bph_next','appr_now','appr_next',
+    'line','capa','filltype','fillspeed','nozzle','firstart',
+    'sig1','sig2','sig3','sig4','memo'];
+  openForm();
+  // Mark cleared fields with yellow highlight so user knows what to refill
+  document.querySelectorAll('#form-modal .dup-cleared').forEach(el => el.classList.remove('dup-cleared'));
+  CLEAR_FIELDS.forEach(k => {
+    const el = document.getElementById('f-'+k);
+    if (el) {
+      el.classList.add('dup-cleared');
+      const clear = () => { el.classList.remove('dup-cleared'); el.removeEventListener('input', clear); el.removeEventListener('change', clear); };
+      el.addEventListener('input', clear);
+      el.addEventListener('change', clear);
+    }
+  });
+  FIELDS.forEach(k=>{
+    if (CLEAR_FIELDS.includes(k)) return;
+    const v = src[k];
+    if (v == null || v === '') return;
+    const el = document.getElementById('f-'+k);
+    if (el) el.value = v;
+  });
+  CHECKS.forEach(c=>{
+    if (c === 'limit') return;
+    const el = document.getElementById('c-'+c);
+    if (el) el.checked = !!src['chk_'+c];
+  });
+  // Don't carry over attached files on duplicate — each new request needs fresh docs
+  resetDocs();
+  if (src.xp) {
+    writeExportToForm(src.xp);
+    updateExportSectionVisibility(true);
+  }
+  document.getElementById('f-docno').value = nextDocNo();
+  document.getElementById('f-reqdate').value = new Date().toISOString().substring(0,10);
+  document.getElementById('f-status').value = 'pending';
+  document.getElementById('f-richeck').value = '대기';
+  document.getElementById('f-pdcheck').value = '대기';
+  document.getElementById('f-pilotstatus').value = '';
+  document.getElementById('form-title').textContent = '📑 복제 — ' + (src.product || '신규 요청서');
+  updateScopeTabs();
+  toggleLimitAttach();
+  refreshReqSummary();
+  showSnackbar('📑 복제 완료 · 노란색 표시 항목(날짜·배치·판정값·서명·메모)을 새로 입력해주세요. 첨부 파일은 새로 업로드 필요.', null, 7000);
+}
+
+// ==================== Export ====================
+function exportCSV() {
+  const headers = ['요청일','문서번호','긴급도','상태','시생산범위','시생산예정일','시생산완료일','시생산상태','고객사','브랜드','품목코드','제품명','수량','영업담당','생산라인','CAPA','첨부 파일','최근 업데이트','메모'];
+  const rows = requests.map(r=>{
+    const latest = latestUpdate(r);
+    const latestText = latest ? `${latest.date} [${latest.stage}] ${latest.note}` : '';
+    const docList = DOC_KINDS
+      .map(k => { const d = safeDocData(r['doc_'+k]); return d ? `${DOC_LABELS[k]}: ${d.name}` : null; })
+      .filter(Boolean).join(' | ');
+    return [r.reqdate,r.docno,urgencyLabel(r.urgency),statusLabel(r.status),r.scope||'',r.pilotdate||'',r.pilotdone||'',r.pilotstatus||'',r.client,r.brand,r.fgcode,r.product,r.qty,r.sales,r.line,r.capa,docList,latestText,(r.memo||'').replace(/[\r\n,]/g,' ')];
+  });
+  const csv = '﻿' + [headers, ...rows].map(row=>row.map(c=>`"${(c||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '시생산_요청이력_' + new Date().toISOString().substring(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showSnackbar(`📥 CSV 내보내기 완료: ${requests.length}건`);
+}
+
+function exportBackup() {
+  if (requests.length === 0) { alert('백업할 데이터가 없습니다.'); return; }
+  const now = new Date();
+  const payload = {
+    app: 'cosmax_pilot_requests',
+    version: 4,
+    schemaVersion: SCHEMA_VERSION,
+    exportedAt: now.toISOString(),
+    count: requests.length,
+    data: requests
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], {type:'application/json;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const pad = n => String(n).padStart(2,'0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  a.download = `INPMS_시생산백업_${stamp}_${requests.length}건.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  meta.lastExport = now.toISOString();
+  saveMeta();
+  renderCurrent();
+  showSnackbar(`💾 백업 완료: ${requests.length}건`);
+}
+
+// Whitelist of fields a request record may contain (everything else is dropped)
+const IMPORT_STRING_FIELDS = FIELDS.concat(['id','docno']); // FIELDS already includes docno/rev etc., harmless duplicate
+const IMPORT_BOOL_FIELDS = CHECKS.map(c => 'chk_' + c);
+const IMPORT_PHOTO_FIELDS = PHOTO_KINDS.map(k => 'photo_' + k);
+const IMPORT_DOC_FIELDS = DOC_KINDS.map(k => 'doc_' + k);
+
+function sanitizeUpdate(u) {
+  if (!u || typeof u !== 'object') return null;
+  const clean = {
+    date: typeof u.date === 'string' ? u.date.slice(0, 20) : '',
+    author: typeof u.author === 'string' ? u.author.slice(0, 200) : '',
+    stage: typeof u.stage === 'string' ? u.stage.slice(0, 100) : '',
+    note: typeof u.note === 'string' ? u.note.slice(0, 5000) : ''
+  };
+  if (!clean.date && !clean.note) return null;
+  return clean;
+}
+
+function sanitizeImportRecord(r) {
+  if (!r || typeof r !== 'object') return null;
+  const clean = {};
+  // strings (including id — id gets regenerated below if malformed)
+  IMPORT_STRING_FIELDS.forEach(k => {
+    const v = r[k];
+    if (typeof v === 'string') clean[k] = v.slice(0, 10000);
+    else if (typeof v === 'number') clean[k] = String(v);
+    // else: drop silently
+  });
+  // booleans
+  IMPORT_BOOL_FIELDS.forEach(k => { clean[k] = !!r[k]; });
+  // photos: only valid data URLs survive
+  IMPORT_PHOTO_FIELDS.forEach(k => { clean[k] = safePhotoSrc(r[k]) || null; });
+  // attached docs: only valid data URLs + metadata survive
+  IMPORT_DOC_FIELDS.forEach(k => { clean[k] = safeDocData(r[k]) || null; });
+  // id: regenerate if not matching /^R\d+$/
+  if (typeof clean.id !== 'string' || !/^R\d+$/.test(clean.id)) clean.id = genId();
+  // updates: array of sanitized entries
+  const ups = Array.isArray(r.updates) ? r.updates.map(sanitizeUpdate).filter(Boolean) : [];
+  clean.updates = ups;
+  // xp (export info, nested)
+  const xp = sanitizeExport(r.xp);
+  if (xp) clean.xp = xp;
+  // sectionMeta (relay-writing audit, nested)
+  const sm = sanitizeSectionMeta(r.sectionMeta);
+  if (sm) clean.sectionMeta = sm;
+  return clean;
+}
+
+function sanitizeExport(xp) {
+  if (!xp || typeof xp !== 'object') return null;
+  const CERT_OK = new Set(['FDA (미국)','CE (EU)','CPNP (EU)','PIF (EU)','NMPA (중국)','KFDA (한국)','기타']);
+  const clean = {
+    countries: typeof xp.countries === 'string' ? xp.countries.slice(0, 500) : '',
+    cert: Array.isArray(xp.cert) ? xp.cert.filter(c => typeof c === 'string' && CERT_OK.has(c)).slice(0, 20) : [],
+    translation: (xp.translation === 'Y' || xp.translation === 'N') ? xp.translation : '',
+    note: typeof xp.note === 'string' ? xp.note.slice(0, 5000) : ''
+  };
+  if (!clean.countries && clean.cert.length === 0 && !clean.translation && !clean.note) return null;
+  return clean;
+}
+
+function handleImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      let raw;
+      if (Array.isArray(parsed)) {
+        raw = parsed;
+      } else if (parsed && Array.isArray(parsed.data)) {
+        raw = parsed.data;
+      } else {
+        throw new Error('올바른 백업 파일 형식이 아닙니다.');
+      }
+      // Per-record whitelist sanitization: untrusted input never reaches storage as-is
+      const data = raw.map(sanitizeImportRecord).filter(Boolean);
+      const dropped = raw.length - data.length;
+      if (data.length === 0) throw new Error('유효한 레코드가 없습니다.');
+      const fileSchema = (parsed && Number.isInteger(parsed.schemaVersion)) ? parsed.schemaVersion : 0;
+      const schemaWarn = fileSchema > SCHEMA_VERSION
+        ? `\n⚠ 백업 파일 스키마(v${fileSchema})가 이 앱(v${SCHEMA_VERSION})보다 최신입니다. 일부 필드가 누락될 수 있습니다.`
+        : '';
+      const dropWarn = dropped > 0 ? `\n⚠ ${dropped}건은 형식 오류로 제외됩니다.` : '';
+      const msg = `${data.length}건을 복원합니다.\n\n⚠ 현재 저장된 ${requests.length}건은 덮어쓰기됩니다.${dropWarn}${schemaWarn}\n\n계속하시겠습니까?`;
+      if (!confirm(msg)) { event.target.value = ''; return; }
+      requests = data;
+      if (!saveData()) { event.target.value = ''; return; }
+      renderCurrent();
+      showSnackbar(`✓ 복원 완료: ${data.length}건` + (dropped > 0 ? ` (${dropped}건 제외)` : ''), null, 6000);
+    } catch (err) {
+      alert('복원 실패: ' + err.message);
+    }
+    event.target.value = '';
+  };
+  reader.onerror = () => { alert('파일 읽기 실패'); event.target.value = ''; };
+  reader.readAsText(file);
+}
+
+function exportWeeklyPDF() {
+  const content = document.getElementById('weekly-content').innerHTML;
+  if (!content.trim()) { alert('출력할 내용이 없습니다.'); return; }
+  const win = window.open('', '_blank');
+  if (!win) { alert('팝업 차단을 해제해주세요.'); return; }
+  const today = new Date().toLocaleDateString('ko-KR');
+  win.document.write(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>주차별 업데이트 리포트</title>
+<style>
+  body { font-family: 'Malgun Gothic', sans-serif; padding: 24px; color: #222; }
+  h1 { color: #1e3a5f; text-align: center; margin-bottom: 6px; font-size: 20px; }
+  .meta { text-align: center; color: #64748b; font-size: 12px; margin-bottom: 20px; }
+  h3 { color: #1e3a5f; border-bottom: 2px solid #ff7f3f; padding-bottom: 6px; margin: 18px 0 10px; font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 14px; }
+  th, td { padding: 6px 8px; border: 1px solid #cbd5e1; text-align: left; vertical-align: top; }
+  th { background: #f1f5f9; color: #1e3a5f; }
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .b-pending { background: #f1f5f9; color: #64748b; }
+  .b-progress { background: #dbeafe; color: #1e40af; }
+  .b-done { background: #d1fae5; color: #065f46; }
+  .b-issue { background: #fee2e2; color: #991b1b; }
+  .update-stage { background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; }
+  .capa-missing { color: #ef4444; font-weight: bold; }
+  .capa-ok { color: #10b981; }
+  .weekly-week { page-break-inside: avoid; }
+  @media print { @page { margin: 12mm; size: A4; } body { padding: 0; } }
+</style>
+</head>
+<body>
+  <h1>📅 주차별 시생산 진행 업데이트 리포트</h1>
+  <div class="meta">COSMAX · 생성일: ${today}</div>
+  ${content}
+  <script>window.onload = function() { setTimeout(function() { window.print(); }, 300); };<\/script>
+</body>
+</html>`);
+  win.document.close();
+}
+
+// ==================== Dev: Dummy Data Seed (테스트용, 삭제 예정) ====================
+function seedDummyData() {
+  const legacyDummyProjects = [
+    // 옛 더미 (실제 브랜드명 기반)
+    '윤조 에센스 리뉴얼', '자정 크림 신규 개발', '립 플럼핑 세럼', '타임레볼루션 에센스 리뉴얼',
+    // 현재 더미 (가상 브랜드)
+    '루미아 토너 리뉴얼', '아우라 나이트 크림 신규 개발', '듀이 글로우 세럼 개발', '네오 모이스처 로션 리뉴얼'
+  ];
+  const isDummy = (r) => r && (r._dummy === true || legacyDummyProjects.indexOf(r.project) >= 0);
+  const existingDummyCount = requests.filter(isDummy).length;
+  if (existingDummyCount > 0) {
+    if (!confirm('기존 더미 ' + existingDummyCount + '건이 있습니다. 최신 더미 4건으로 교체하시겠습니까?\n(사용자가 직접 작성한 요청은 그대로 유지됩니다)')) return;
+    requests = requests.filter(r => !isDummy(r));
+  } else if (requests.length > 0) {
+    if (!confirm('기존 요청 ' + requests.length + '건이 있습니다. 더미 4건을 추가하시겠습니까?\n(기존 데이터는 유지됩니다)')) return;
+  }
+  const today = new Date().toISOString().substring(0,10);
+  const dAgo = (n) => { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().substring(0,10); };
+  const dAhead = (n) => { const d = new Date(); d.setDate(d.getDate()+n); return d.toISOString().substring(0,10); };
+
+  const dummies = [
+    // 1) 접수 대기 · 일반 · 최소 필드 · 제조+충진 · 시생산 예정
+    {
+      id: genId(),
+      docno: nextDocNo(),
+      rev: 'Rev.0', reqdate: today, urgency: 'normal', scope: '제조 + 충진/포장', cost: '자사',
+      client: '한빛코스메틱', brand: '루미아', project: '루미아 토너 리뉴얼',
+      dept: '연구소', sales: '김영업', ri: '박연구', qa: '', pd: '', prod: '',
+      request: '기존 처방 기반으로 점도 5% 상향 조정한 리뉴얼 샘플 시생산 요청',
+      purpose: '2Q 신제품 출시 전 양산 안정성 검증',
+      product: '토너', qty: '30,000ea', _dummy: true,
+      batch: '', launch: dAhead(90), launchqty: '500,000ea',
+      sampledate: '', sampleto: '',
+      pilotdate: dAhead(14), pilotdone: '',
+      bulkcode: 'BLK-2026-0045', formula: 'F-2026-0112', batchsize: '300 kg',
+      material: '입고 완료', newmat: 'N',
+      equipment: 'Homo-mixer 500L', caution: '',
+      sg_cond: '', sg_now: '', sg_next: '', visc_cond: '', visc_now: '', visc_next: '',
+      hard_cond: '', hard_now: '', hard_next: '', bph_cond: '', bph_now: '', bph_next: '',
+      appr_cond: '', appr_now: '', appr_next: '',
+      fillwt: '100', filltol: '±2%', filltemp: '', labelvol: '100 mL', melttemp: '', fillnote: '',
+      line: '', capa: '', filltype: '', fillspeed: '', nozzle: '', firstart: '',
+      container: 'Glass', volume: '100 mL', torque: '', holder: '불필요', tunnel: '',
+      limit: '', function: '', newtech: '', pconcern: '', fconcern: '', scaleup: '',
+      status: 'pending', pilotstatus: '예정', richeck: '대기', pdcheck: '대기', memo: '',
+      sig1: '김영업', sig2: '', sig3: '', sig4: '',
+      chk_bom: true, chk_msds: false, chk_coa: false, chk_drawing: false, chk_limit: false, chk_prior: false,
+      updates: [],
+      photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
+    },
+    // 2) 검토 진행중 · 긴급 · 제조+충진 · 시생산 예정 · 업데이트 1건
+    {
+      id: genId(),
+      docno: 'REQ-' + new Date().getFullYear() + '-0002',
+      rev: 'Rev.1', reqdate: dAgo(5), urgency: 'urgent', scope: '제조 + 충진/포장', cost: '고객사',
+      client: '아우라뷰티', brand: '아우라', project: '아우라 나이트 크림 신규 개발',
+      dept: '연구소', sales: '이영업', ri: '최연구', qa: '정품질', pd: '오공정', prod: '',
+      request: '신규 자정 성분 5% 함유 크림 시생산. 관능 평가 및 안정성 테스트 동반 필요',
+      purpose: '가을 런칭 제품 양산 이관 전 검증',
+      product: '크림', qty: '50,000ea', _dummy: true,
+      batch: 'B-2026-102', launch: dAhead(60), launchqty: '1,200,000ea',
+      sampledate: dAhead(14), sampleto: '고객사 마케팅팀',
+      pilotdate: dAhead(7), pilotdone: '',
+      bulkcode: 'BLK-2026-0058', formula: 'F-2026-0130', batchsize: '500 kg',
+      material: '대기', newmat: 'Y',
+      equipment: 'Homo-mixer 1Ton + Vacuum', caution: '신규 원료 분산 시 고속 교반 필수',
+      sg_cond: '25°C', sg_now: '0.98', sg_next: '0.98',
+      visc_cond: 'Brookfield LV, #64, 25°C', visc_now: '12,500', visc_next: '13,200',
+      hard_cond: 'Texture Analyzer, 25°C', hard_now: '85 g', hard_next: '88 g',
+      bph_cond: 'pH Meter, 25°C', bph_now: '5.8', bph_next: '5.7',
+      appr_cond: '육안, D65 조명', appr_now: '연미색, 특이사항 없음', appr_next: '연미색 유지',
+      fillwt: '60', filltol: '±1.5%', filltemp: '상온', labelvol: '60 mL', melttemp: '', fillnote: '',
+      line: '', capa: '', filltype: '', fillspeed: '', nozzle: '', firstart: '',
+      container: 'Glass', volume: '60 mL', torque: '18 kgf·cm', holder: '필요 (기존 보유)', tunnel: '',
+      limit: '있음 (첨부)', function: '누액 테스트, 캡 토크, 펌프 작동 확인',
+      newtech: '자정 성분 신규 도입', pconcern: '신규 원료 용해도 이슈 가능성', fconcern: '', scaleup: '양산 시 분산 안정성 모니터링 필수',
+      status: 'progress', pilotstatus: '예정', richeck: '진행중', pdcheck: '대기', memo: '연구소 검토 중 - 안정성 데이터 대기',
+      sig1: '이영업', sig2: '최연구', sig3: '', sig4: '',
+      chk_bom: true, chk_msds: true, chk_coa: true, chk_drawing: false, chk_limit: true, chk_prior: false,
+      updates: [
+        { date: dAgo(2), author: '최연구 / 연구소', stage: '연구 검토', note: '처방 레시피 검토 완료. 신규 자정 성분 용해도 추가 테스트 진행 예정. 다음 주 벌크 제조 스케줄 확정.' }
+      ],
+      photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
+    },
+    // 3) 지연/이슈 · 최우선 · 충진/포장만 · 시생산 진행중 · 공정개발 필드 기입 · 업데이트 2건
+    {
+      id: genId(),
+      docno: 'REQ-' + new Date().getFullYear() + '-0003',
+      rev: 'Rev.2', reqdate: dAgo(20), urgency: 'critical', scope: '충진/포장만', cost: '자사',
+      client: '블루오션랩', brand: '듀이', project: '듀이 글로우 세럼 개발',
+      dept: '연구소', sales: '박영업', ri: '김연구', qa: '이품질', pd: '오공정', prod: '강생산',
+      request: '기존 벌크 재활용 - 충진/포장 공정만 진행. 신규 용기 대응 필요',
+      purpose: '9월 메가 세일 론칭 대응 - 일정 지연 리스크 관리 필요',
+      product: '세럼', qty: '80,000ea', _dummy: true,
+      batch: 'B-2026-087', launch: dAhead(45), launchqty: '800,000ea',
+      sampledate: dAgo(3), sampleto: '고객사 QA + 마케팅',
+      pilotdate: dAgo(2), pilotdone: '',
+      bulkcode: 'BLK-2026-0071', formula: 'F-2026-0145', batchsize: '250 kg',
+      material: '대체품 사용', newmat: 'Y',
+      equipment: 'Homo-mixer 300L', caution: '펩타이드 성분 40°C 이하 유지. 고속 교반 금지.',
+      sg_cond: '25°C', sg_now: '1.02', sg_next: '1.02',
+      visc_cond: 'Brookfield LV, #62, 25°C', visc_now: '8,500', visc_next: '8,200',
+      hard_cond: '', hard_now: '', hard_next: '',
+      bph_cond: 'pH Meter, 25°C', bph_now: '4.5', bph_next: '4.6',
+      appr_cond: '육안, D65 조명', appr_now: '투명, 미세 기포 관찰', appr_next: '투명 - 기포 소멸',
+      fillwt: '10', filltol: '±2%', filltemp: '25°C', labelvol: '10 mL', melttemp: '', fillnote: '기포 발생 가능성 있어 저속 충진 필수',
+      line: '3공장 B라인', capa: '40,000 ea/일', filltype: '피스톤', fillspeed: '25 ea/min', nozzle: '2.5 mm', firstart: '1~10호',
+      container: 'Glass', volume: '10 mL', torque: '12 kgf·cm', holder: '필요 (신규 제작)', tunnel: '수축 터널 70°C, 3초',
+      limit: '있음 (첨부)', function: '펌프 작동 횟수 테스트, 누액, 드리핑 확인',
+      newtech: '펩타이드 신규 캡슐화 기술 적용',
+      pconcern: '대체 원료 사용으로 점도 불안정 이슈 발생 중',
+      fconcern: '기포로 인한 충진량 오차 가능성 - 탈기 공정 추가 검토',
+      scaleup: '펩타이드 온도 관리 양산 라인 사양 확인 필수',
+      status: 'issue', pilotstatus: '진행중', richeck: '완료', pdcheck: '진행중', memo: '대체 원료 점도 이슈로 일정 3일 지연. 펩타이드 재공급 대응 중.',
+      sig1: '박영업', sig2: '김연구', sig3: '오공정', sig4: '',
+      chk_bom: true, chk_msds: true, chk_coa: true, chk_drawing: true, chk_limit: true, chk_prior: true,
+      updates: [
+        { date: dAgo(15), author: '김연구 / 연구소', stage: '연구 검토', note: '신규 펩타이드 안정성 검증 완료. 공정개발팀 이관.' },
+        { date: dAgo(7), author: '오공정 / 공정개발', stage: '공정 검토', note: '대체 원료 전환으로 점도 편차 확인. 3일 일정 지연 예상. 고객사 협의 완료.' }
+      ],
+      photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
+    },
+    // 4) 확인 완료 · 일반 · 제조만 · 시생산 완료 · 전체 필드 + 서명 완료 · 업데이트 3건
+    {
+      id: genId(),
+      docno: 'REQ-' + new Date().getFullYear() + '-0004',
+      rev: 'Rev.3', reqdate: dAgo(45), urgency: 'normal', scope: '제조만', cost: '고객사',
+      client: '네오스킨', brand: '네오', project: '네오 모이스처 로션 리뉴얼',
+      dept: '연구소', sales: '최영업', ri: '한연구', qa: '서품질', pd: '윤공정', prod: '조생산',
+      request: '벌크 제조만 진행 - 충진/포장은 고객사 자체 라인에서 수행',
+      purpose: '완료된 리뉴얼 제품의 양산 이관 최종 확인',
+      product: '로션', qty: '120,000ea', _dummy: true,
+      batch: 'B-2026-052', launch: dAgo(10), launchqty: '3,000,000ea',
+      sampledate: dAgo(30), sampleto: '고객사 전 부서',
+      pilotdate: dAgo(15), pilotdone: dAgo(12),
+      bulkcode: 'BLK-2026-0032', formula: 'F-2026-0095', batchsize: '1,000 kg',
+      material: '입고 완료', newmat: 'N',
+      equipment: 'Homo-mixer 2Ton', caution: '기존 공정 동일 적용',
+      sg_cond: '25°C', sg_now: '1.01', sg_next: '1.01',
+      visc_cond: 'Brookfield LV, #64, 25°C', visc_now: '3,200', visc_next: '3,250',
+      hard_cond: '', hard_now: '', hard_next: '',
+      bph_cond: 'pH Meter, 25°C', bph_now: '5.5', bph_next: '5.5',
+      appr_cond: '육안, D65 조명', appr_now: '반투명 연황색', appr_next: '반투명 연황색',
+      fillwt: '150', filltol: '±1%', filltemp: '상온', labelvol: '150 mL', melttemp: '', fillnote: '',
+      line: '1공장 A라인', capa: '60,000 ea/일', filltype: '플로우미터', fillspeed: '45 ea/min', nozzle: '6 mm', firstart: '1~5호',
+      container: 'PET(페트)', volume: '150 mL', torque: '15 kgf·cm', holder: '불필요', tunnel: '수축 터널 85°C, 2초',
+      limit: '있음 (첨부)', function: '누액 테스트, 펌프 작동, 캡 토크 모두 정상',
+      newtech: '', pconcern: '', fconcern: '', scaleup: '양산 이관 최종 승인 완료',
+      status: 'done', pilotstatus: '완료', richeck: '완료', pdcheck: '완료', memo: '전 과정 이상 없음. 양산 정식 이관 완료.',
+      sig1: '최영업', sig2: '한연구', sig3: '윤공정', sig4: '양산이관위원회',
+      chk_bom: true, chk_msds: true, chk_coa: true, chk_drawing: true, chk_limit: true, chk_prior: true,
+      updates: [
+        { date: dAgo(40), author: '한연구 / 연구소', stage: '연구 검토', note: '처방 검토 완료. 기존 대비 유의한 변경점 없음.' },
+        { date: dAgo(25), author: '윤공정 / 공정개발', stage: '벌크 제조', note: '1Ton 배치 제조 완료. 물성치 기준 내 안정.' },
+        { date: dAgo(12), author: '조생산 / 생산', stage: '완료', note: '시생산 120,000ea 완료. 양산 이관 승인.' }
+      ],
+      photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
+    }
+  ];
+
+  // Override docnos to sequential REQ-YYYY-000N based on existing highest
+  const year = new Date().getFullYear();
+  let seq = 0;
+  requests.forEach(r => {
+    const p = 'REQ-' + year + '-';
+    if (r && typeof r.docno === 'string' && r.docno.startsWith(p)) {
+      const n = parseInt(r.docno.slice(p.length), 10);
+      if (!isNaN(n) && n > seq) seq = n;
+    }
+  });
+  dummies.forEach(d => { seq += 1; d.docno = 'REQ-' + year + '-' + String(seq).padStart(4, '0'); });
+
+  requests = dummies.concat(requests);
+  if (!saveData()) return;
+  renderCurrent();
+  showSnackbar('🧪 더미 데이터 4건이 주입되었습니다.', null, 4000);
+}
+
+// ==================== Init ====================
+loadData();
+loadProfile();
+renderProfileBadge();
+renderProfileBanner();
+applyRoleUI();
+renderCurrent();
+
+// Close any open modal with ESC, or by clicking the backdrop outside the modal.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-bg.active').forEach(m => m.classList.remove('active'));
+  }
+});
+document.querySelectorAll('.modal-bg').forEach(m => {
+  m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('active'); });
+});
+</script>
+</body>
+</html>
