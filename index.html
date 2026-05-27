@@ -410,7 +410,7 @@
       <button class="btn btn-outline write-only" onclick="document.getElementById('import-file').click()" title="복원">📂<span class="btn-label"> 복원</span></button>
       <button class="btn btn-outline" onclick="exportCSV()" title="CSV 내보내기">📥<span class="btn-label"> CSV 내보내기</span></button>
       <button class="btn btn-primary write-only" onclick="openForm()" title="신규 요청서 작성">＋<span class="btn-label"> 신규 요청서 작성</span></button>
-      <button class="btn btn-outline write-only" style="background:var(--warning-soft); border-color:var(--warning-border); color:#92400e;" onclick="seedDummyData()" title="개발/테스트용 - 완료 후 제거">🧪<span class="btn-label"> 더미 4건 주입</span></button>
+      <button class="btn btn-outline write-only" style="background:var(--warning-soft); border-color:var(--warning-border); color:#92400e;" onclick="seedDummyData()" title="개발/테스트용 - 완료 후 제거">🧪<span class="btn-label"> 더미 10건 주입</span></button>
       <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="handleImport(event)">
     </div>
   </div>
@@ -3214,15 +3214,17 @@ function seedDummyData() {
     // 옛 더미 (실제 브랜드명 기반)
     '윤조 에센스 리뉴얼', '자정 크림 신규 개발', '립 플럼핑 세럼', '타임레볼루션 에센스 리뉴얼',
     // 현재 더미 (가상 브랜드)
-    '루미아 토너 리뉴얼', '아우라 나이트 크림 신규 개발', '듀이 글로우 세럼 개발', '네오 모이스처 로션 리뉴얼'
+    '루미아 토너 리뉴얼', '아우라 나이트 크림 신규 개발', '듀이 글로우 세럼 개발', '네오 모이스처 로션 리뉴얼',
+    '클라리어 비타민 에센스 신규 개발', '베일라 데일리 선크림 리뉴얼', '미라쥬 콜라겐 시트마스크 개발',
+    '솔리아 클렌징 밤 신규 개발', '페탈 매트 립스틱 리뉴얼', '노바 볼륨 마스카라 리뉴얼'
   ];
   const isDummy = (r) => r && (r._dummy === true || legacyDummyProjects.indexOf(r.project) >= 0);
   const existingDummyCount = requests.filter(isDummy).length;
   if (existingDummyCount > 0) {
-    if (!confirm('기존 더미 ' + existingDummyCount + '건이 있습니다. 최신 더미 4건으로 교체하시겠습니까?\n(사용자가 직접 작성한 요청은 그대로 유지됩니다)')) return;
+    if (!confirm('기존 더미 ' + existingDummyCount + '건이 있습니다. 최신 더미 10건으로 교체하시겠습니까?\n(사용자가 직접 작성한 요청은 그대로 유지됩니다)')) return;
     requests = requests.filter(r => !isDummy(r));
   } else if (requests.length > 0) {
-    if (!confirm('기존 요청 ' + requests.length + '건이 있습니다. 더미 4건을 추가하시겠습니까?\n(기존 데이터는 유지됩니다)')) return;
+    if (!confirm('기존 요청 ' + requests.length + '건이 있습니다. 더미 10건을 추가하시겠습니까?\n(기존 데이터는 유지됩니다)')) return;
   }
   const today = new Date().toISOString().substring(0,10);
   const dAgo = (n) => { const d = new Date(); d.setDate(d.getDate()-n); return d.toISOString().substring(0,10); };
@@ -3365,6 +3367,211 @@ function seedDummyData() {
         { date: dAgo(12), author: '조생산 / 생산', stage: '완료', note: '시생산 120,000ea 완료. 양산 이관 승인.' }
       ],
       photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
+    },
+    // 5) 접수 대기 · 최우선 · 제조+충진 · 시생산 예정
+    {
+      id: genId(),
+      docno: 'REQ-' + new Date().getFullYear() + '-0005',
+      rev: 'Rev.0', reqdate: dAgo(1), urgency: 'critical', scope: '제조 + 충진/포장', cost: '고객사',
+      client: '클라리어바이오', brand: '클라리어', project: '클라리어 비타민 에센스 신규 개발',
+      dept: '마케팅', sales: '윤영업', ri: '', qa: '', pd: '', prod: '',
+      request: '비타민C 10% 고함량 에센스 신규 개발 시생산 요청. 광 안정성 확보 필요.',
+      purpose: '7월 여름 한정판 런칭 - 라이브커머스 단독 채널',
+      product: '에센스', qty: '40,000ea', _dummy: true,
+      batch: '', launch: dAhead(50), launchqty: '600,000ea',
+      sampledate: dAhead(20), sampleto: '고객사 마케팅 + 인플루언서',
+      pilotdate: dAhead(10), pilotdone: '',
+      bulkcode: '', formula: '', batchsize: '400 kg',
+      material: '대기', newmat: 'Y',
+      equipment: 'Homo-mixer 500L (질소 치환)', caution: '비타민C 산화 방지 - 차광/저온/질소 필수',
+      sg_cond: '', sg_now: '', sg_next: '', visc_cond: '', visc_now: '', visc_next: '',
+      hard_cond: '', hard_now: '', hard_next: '', bph_cond: '', bph_now: '', bph_next: '',
+      appr_cond: '', appr_now: '', appr_next: '',
+      fillwt: '30', filltol: '±2%', filltemp: '상온', labelvol: '30 mL', melttemp: '', fillnote: '갈변 방지 - 차광 용기 사용',
+      line: '', capa: '', filltype: '', fillspeed: '', nozzle: '', firstart: '',
+      container: 'Glass (호박색)', volume: '30 mL', torque: '', holder: '필요 (신규 제작)', tunnel: '',
+      limit: '', function: '', newtech: '비타민C 안정화 신규 기술 적용', pconcern: '광안정성 검증 필수', fconcern: '', scaleup: '',
+      status: 'pending', pilotstatus: '예정', richeck: '대기', pdcheck: '대기', memo: '긴급 요청 - 마케팅 사전 협의 필요',
+      sig1: '윤영업', sig2: '', sig3: '', sig4: '',
+      chk_bom: true, chk_msds: false, chk_coa: false, chk_drawing: true, chk_limit: false, chk_prior: true,
+      updates: [],
+      photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
+    },
+    // 6) 검토 진행중 · 일반 · 제조+충진 · 시생산 예정 · 업데이트 1건
+    {
+      id: genId(),
+      docno: 'REQ-' + new Date().getFullYear() + '-0006',
+      rev: 'Rev.1', reqdate: dAgo(8), urgency: 'normal', scope: '제조 + 충진/포장', cost: '자사',
+      client: '베일라코스메틱', brand: '베일라', project: '베일라 데일리 선크림 리뉴얼',
+      dept: '해외영업', sales: '강영업', ri: '서연구', qa: '문품질', pd: '', prod: '',
+      request: 'SPF50+ PA++++ 무기자차 선크림 텍스처 개선 리뉴얼. 백탁 감소 처방.',
+      purpose: '동남아 수출용 - 가을 발주 대응',
+      product: '선크림', qty: '60,000ea', _dummy: true,
+      batch: 'B-2026-118', launch: dAhead(75), launchqty: '900,000ea',
+      sampledate: dAhead(18), sampleto: '해외영업 + 현지 바이어',
+      pilotdate: dAhead(21), pilotdone: '',
+      bulkcode: 'BLK-2026-0082', formula: 'F-2026-0158', batchsize: '600 kg',
+      material: '입고 완료', newmat: 'N',
+      equipment: 'Homo-mixer 1Ton', caution: 'TiO2/ZnO 분산 안정성 확보',
+      sg_cond: '25°C', sg_now: '1.05', sg_next: '1.05',
+      visc_cond: 'Brookfield LV, #64, 25°C', visc_now: '15,000', visc_next: '14,200',
+      hard_cond: '', hard_now: '', hard_next: '',
+      bph_cond: 'pH Meter, 25°C', bph_now: '6.0', bph_next: '6.0',
+      appr_cond: '육안, D65 조명', appr_now: '백색 크림 - 도포 시 백탁 감소', appr_next: '백탁 추가 개선',
+      fillwt: '50', filltol: '±1.5%', filltemp: '상온', labelvol: '50 mL', melttemp: '', fillnote: '',
+      line: '', capa: '', filltype: '', fillspeed: '', nozzle: '', firstart: '',
+      container: 'PE Tube', volume: '50 mL', torque: '', holder: '불필요', tunnel: '',
+      limit: '있음 (수출용 규격)', function: 'SPF 측정, 내수성 테스트',
+      newtech: '신규 분산제 적용', pconcern: '', fconcern: '', scaleup: '',
+      status: 'progress', pilotstatus: '예정', richeck: '진행중', pdcheck: '대기', memo: '',
+      sig1: '강영업', sig2: '서연구', sig3: '', sig4: '',
+      chk_bom: true, chk_msds: true, chk_coa: true, chk_drawing: true, chk_limit: false, chk_prior: false,
+      updates: [
+        { date: dAgo(3), author: '서연구 / 연구소', stage: '연구 검토', note: 'SPF/PA 측정 의뢰 완료. 분산 안정성 1차 통과.' }
+      ],
+      photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
+    },
+    // 7) 검토 진행중 · 긴급 · 충진/포장만 · 시생산 진행중 · 업데이트 2건
+    {
+      id: genId(),
+      docno: 'REQ-' + new Date().getFullYear() + '-0007',
+      rev: 'Rev.2', reqdate: dAgo(12), urgency: 'urgent', scope: '충진/포장만', cost: '고객사',
+      client: '미라쥬뷰티', brand: '미라쥬', project: '미라쥬 콜라겐 시트마스크 개발',
+      dept: '연구소', sales: '한영업', ri: '오연구', qa: '백품질', pd: '신공정', prod: '',
+      request: '저분자 콜라겐 함유 시트마스크 - 부직포 함침 공정 신규 적용',
+      purpose: '면세점 입점 전용 상품 개발',
+      product: '시트마스크', qty: '100,000ea', _dummy: true,
+      batch: 'B-2026-094', launch: dAhead(35), launchqty: '500,000ea',
+      sampledate: dAgo(5), sampleto: '고객사 MD + QA',
+      pilotdate: dAgo(3), pilotdone: '',
+      bulkcode: 'BLK-2026-0066', formula: 'F-2026-0140', batchsize: '350 kg',
+      material: '입고 완료', newmat: 'N',
+      equipment: '함침 라인 - 신규 부직포 대응', caution: '함침 균일도 - 25mL/매 ±0.5 mL',
+      sg_cond: '25°C', sg_now: '1.02', sg_next: '1.02',
+      visc_cond: 'Brookfield LV, #62, 25°C', visc_now: '6,800', visc_next: '6,500',
+      hard_cond: '', hard_now: '', hard_next: '',
+      bph_cond: 'pH Meter, 25°C', bph_now: '5.5', bph_next: '5.5',
+      appr_cond: '육안, D65 조명', appr_now: '투명, 점성 약간 있음', appr_next: '동일',
+      fillwt: '25', filltol: '±2%', filltemp: '상온', labelvol: '25 mL', melttemp: '', fillnote: '부직포 함침 - 흡수율 일정 유지',
+      line: '2공장 마스크 라인', capa: '50,000 ea/일', filltype: '스프레이 함침', fillspeed: '35 ea/min', nozzle: '4 mm', firstart: '1~20호',
+      container: '알루미늄 파우치', volume: '25 mL', torque: '', holder: '불필요', tunnel: '실링 130°C, 1.5초',
+      limit: '있음 (첨부)', function: '함침량 측정, 실링 강도, 흡수 시간',
+      newtech: '신규 부직포 (셀룰로오스 100%) 적용', pconcern: '', fconcern: '함침 편차 관리', scaleup: '양산 시 함침 라인 속도 재검토',
+      status: 'progress', pilotstatus: '진행중', richeck: '완료', pdcheck: '진행중', memo: '함침 편차 측정 진행 중',
+      sig1: '한영업', sig2: '오연구', sig3: '신공정', sig4: '',
+      chk_bom: true, chk_msds: true, chk_coa: true, chk_drawing: true, chk_limit: true, chk_prior: false,
+      updates: [
+        { date: dAgo(8), author: '오연구 / 연구소', stage: '연구 검토', note: '저분자 콜라겐 함량 안정성 OK. 공정개발 이관.' },
+        { date: dAgo(2), author: '신공정 / 공정개발', stage: '시생산', note: '신규 부직포 함침 균일도 검증 중. 1차 샘플 양호.' }
+      ],
+      photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
+    },
+    // 8) 지연/이슈 · 일반 · 제조만 · 시생산 진행중 · 업데이트 2건
+    {
+      id: genId(),
+      docno: 'REQ-' + new Date().getFullYear() + '-0008',
+      rev: 'Rev.1', reqdate: dAgo(25), urgency: 'normal', scope: '제조만', cost: '자사',
+      client: '솔리아내추럴', brand: '솔리아', project: '솔리아 클렌징 밤 신규 개발',
+      dept: '연구소', sales: '조영업', ri: '임연구', qa: '권품질', pd: '백공정', prod: '',
+      request: '식물성 왁스 베이스 클렌징 밤 - 벌크 제조만 수행',
+      purpose: '자사 PB 브랜드 신규 라인 확장',
+      product: '클렌징 밤', qty: '20,000ea', _dummy: true,
+      batch: 'B-2026-079', launch: dAhead(40), launchqty: '200,000ea',
+      sampledate: dAgo(7), sampleto: '연구소 + 마케팅',
+      pilotdate: dAgo(5), pilotdone: '',
+      bulkcode: 'BLK-2026-0061', formula: 'F-2026-0135', batchsize: '200 kg',
+      material: '대체품 사용', newmat: 'Y',
+      equipment: 'Homo-mixer 200L (가온형)', caution: '왁스 용융 75°C 유지, 냉각 시 결정화 관리',
+      sg_cond: '25°C', sg_now: '0.92', sg_next: '0.92',
+      visc_cond: 'Brookfield HB, #93, 40°C', visc_now: '측정 불가 (고형)', visc_next: '동일',
+      hard_cond: 'Texture Analyzer, 25°C', hard_now: '320 g', hard_next: '280 g 목표',
+      bph_cond: '', bph_now: '', bph_next: '',
+      appr_cond: '육안, D65 조명', appr_now: '연황색 고형, 미세 결정 관찰됨', appr_next: '균질 고형',
+      fillwt: '90', filltol: '±2%', filltemp: '50°C 가온', labelvol: '90 g', melttemp: '75°C', fillnote: '',
+      line: '', capa: '', filltype: '', fillspeed: '', nozzle: '', firstart: '',
+      container: 'PP Jar', volume: '90 g', torque: '', holder: '불필요', tunnel: '',
+      limit: '', function: '경도 측정, 도포감 평가',
+      newtech: '식물성 왁스 신규 블렌드', pconcern: '대체 왁스 결정화 편차 - 경도 목표 미달', fconcern: '', scaleup: '냉각 프로파일 재설계 필요',
+      status: 'issue', pilotstatus: '진행중', richeck: '완료', pdcheck: '진행중', memo: '경도 목표 미달 - 왁스 비율 재조정 검토 중',
+      sig1: '조영업', sig2: '임연구', sig3: '백공정', sig4: '',
+      chk_bom: true, chk_msds: true, chk_coa: false, chk_drawing: false, chk_limit: false, chk_prior: false,
+      updates: [
+        { date: dAgo(18), author: '임연구 / 연구소', stage: '연구 검토', note: '처방 1차 확정. 공정개발 이관.' },
+        { date: dAgo(4), author: '백공정 / 공정개발', stage: '시생산', note: '경도 320g 측정 - 목표 280g 대비 초과. 왁스 비율 재조정 검토.' }
+      ],
+      photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
+    },
+    // 9) 확인 완료 · 일반 · 제조+충진 · 시생산 완료 · 업데이트 3건
+    {
+      id: genId(),
+      docno: 'REQ-' + new Date().getFullYear() + '-0009',
+      rev: 'Rev.2', reqdate: dAgo(60), urgency: 'normal', scope: '제조 + 충진/포장', cost: '고객사',
+      client: '페탈코스메틱', brand: '페탈', project: '페탈 매트 립스틱 리뉴얼',
+      dept: '해외영업', sales: '문영업', ri: '안연구', qa: '구품질', pd: '장공정', prod: '신생산',
+      request: '매트 립스틱 색상 6종 리뉴얼 - 발색력 개선',
+      purpose: '중화권 가을 신상 출시',
+      product: '립스틱', qty: '90,000ea', _dummy: true,
+      batch: 'B-2026-061', launch: dAgo(5), launchqty: '1,500,000ea',
+      sampledate: dAgo(40), sampleto: '고객사 + 현지 KOL',
+      pilotdate: dAgo(25), pilotdone: dAgo(20),
+      bulkcode: 'BLK-2026-0041', formula: 'F-2026-0108', batchsize: '150 kg',
+      material: '입고 완료', newmat: 'N',
+      equipment: 'Wax mixer 200L + 충진기', caution: '색소 분산 균일도 - 색상 6종 batch 간 편차 관리',
+      sg_cond: '25°C', sg_now: '0.95', sg_next: '0.95',
+      visc_cond: 'Brookfield HB, #94, 80°C', visc_now: '4,200', visc_next: '4,300',
+      hard_cond: 'Penetrometer, 25°C', hard_now: '8.5 mm', hard_next: '8.5 mm',
+      bph_cond: '', bph_now: '', bph_next: '',
+      appr_cond: '육안, D65 조명', appr_now: '6종 색상 정확 발색', appr_next: '동일',
+      fillwt: '3.5', filltol: '±1%', filltemp: '85°C 가온', labelvol: '3.5 g', melttemp: '85°C', fillnote: '몰드 충진 - 색상 전환 시 라인 세정 필수',
+      line: '1공장 립 라인', capa: '30,000 ea/일', filltype: '몰드 충진', fillspeed: '20 ea/min', nozzle: '몰드 직접', firstart: '색상별 1~5호',
+      container: 'ABS + 알루미늄', volume: '3.5 g', torque: '', holder: '필요 (기존 보유)', tunnel: '',
+      limit: '있음 (첨부)', function: '발색력, 지속력, 묻어남 테스트',
+      newtech: '', pconcern: '', fconcern: '', scaleup: '양산 이관 완료',
+      status: 'done', pilotstatus: '완료', richeck: '완료', pdcheck: '완료', memo: '6종 색상 모두 양산 기준 충족',
+      sig1: '문영업', sig2: '안연구', sig3: '장공정', sig4: '양산이관위원회',
+      chk_bom: true, chk_msds: true, chk_coa: true, chk_drawing: true, chk_limit: true, chk_prior: true,
+      updates: [
+        { date: dAgo(55), author: '안연구 / 연구소', stage: '연구 검토', note: '6종 색상 처방 확정. 색차계 측정 기준 내.' },
+        { date: dAgo(35), author: '장공정 / 공정개발', stage: '시생산', note: '6 batch 연속 제조 완료. 색상 편차 ΔE < 1.0.' },
+        { date: dAgo(20), author: '신생산 / 생산', stage: '완료', note: '시생산 90,000ea 완료. 양산 이관 승인.' }
+      ],
+      photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
+    },
+    // 10) 확인 완료 · 긴급 · 충진/포장만 · 시생산 완료 · 업데이트 3건
+    {
+      id: genId(),
+      docno: 'REQ-' + new Date().getFullYear() + '-0010',
+      rev: 'Rev.2', reqdate: dAgo(35), urgency: 'urgent', scope: '충진/포장만', cost: '자사',
+      client: '노바스타일', brand: '노바', project: '노바 볼륨 마스카라 리뉴얼',
+      dept: '마케팅', sales: '서영업', ri: '권연구', qa: '남품질', pd: '하공정', prod: '유생산',
+      request: '마스카라 브러시 변경 - 충진 공정 사양 재검증',
+      purpose: '리뉴얼 패키지 8월 출시',
+      product: '마스카라', qty: '70,000ea', _dummy: true,
+      batch: 'B-2026-073', launch: dAgo(2), launchqty: '700,000ea',
+      sampledate: dAgo(22), sampleto: '마케팅 + QA',
+      pilotdate: dAgo(15), pilotdone: dAgo(12),
+      bulkcode: 'BLK-2026-0055', formula: 'F-2026-0125', batchsize: '180 kg',
+      material: '입고 완료', newmat: 'N',
+      equipment: '마스카라 전용 충진기', caution: '신규 브러시 - 와이퍼 사양 변경 적용',
+      sg_cond: '25°C', sg_now: '1.08', sg_next: '1.08',
+      visc_cond: 'Brookfield HB, #93, 25°C', visc_now: '32,000', visc_next: '31,500',
+      hard_cond: '', hard_now: '', hard_next: '',
+      bph_cond: 'pH Meter, 25°C', bph_now: '7.2', bph_next: '7.2',
+      appr_cond: '육안, D65 조명', appr_now: '진한 검정, 균질', appr_next: '동일',
+      fillwt: '9', filltol: '±2%', filltemp: '상온', labelvol: '9 mL', melttemp: '', fillnote: '신규 와이퍼 9.5 mm 적용',
+      line: '2공장 마스카라 라인', capa: '25,000 ea/일', filltype: '피스톤', fillspeed: '18 ea/min', nozzle: '3 mm', firstart: '1~15호',
+      container: 'PP + 알루미늄', volume: '9 mL', torque: '20 kgf·cm', holder: '필요 (신규 제작)', tunnel: '수축 터널 80°C, 2.5초',
+      limit: '있음 (첨부)', function: '와이퍼 통과량, 브러시 끝단 균일도, 누액',
+      newtech: '와이퍼 신규 사양', pconcern: '', fconcern: '', scaleup: '브러시 공급 안정성 확보 완료',
+      status: 'done', pilotstatus: '완료', richeck: '완료', pdcheck: '완료', memo: '신규 브러시 및 와이퍼 사양 양산 적용 승인',
+      sig1: '서영업', sig2: '권연구', sig3: '하공정', sig4: '양산이관위원회',
+      chk_bom: true, chk_msds: true, chk_coa: true, chk_drawing: true, chk_limit: true, chk_prior: true,
+      updates: [
+        { date: dAgo(30), author: '권연구 / 연구소', stage: '연구 검토', note: '신규 브러시 - 와이퍼 매칭 처방 영향 없음 확인.' },
+        { date: dAgo(20), author: '하공정 / 공정개발', stage: '시생산', note: '와이퍼 통과량 9.2 mg/회 - 기준 내.' },
+        { date: dAgo(12), author: '유생산 / 생산', stage: '완료', note: '시생산 70,000ea 완료. 양산 이관 승인.' }
+      ],
+      photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
     }
   ];
 
@@ -3383,7 +3590,7 @@ function seedDummyData() {
   requests = dummies.concat(requests);
   if (!saveData()) return;
   renderCurrent();
-  showSnackbar('🧪 더미 데이터 4건이 주입되었습니다.', null, 4000);
+  showSnackbar('🧪 더미 데이터 10건이 주입되었습니다.', null, 4000);
 }
 
 // ==================== Init ====================
