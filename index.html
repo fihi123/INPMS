@@ -692,6 +692,40 @@
           </div>
         </div>
         <div class="section">
+          <div class="section-title">🆕 신규성 검토 / 위험도</div>
+          <div class="hint-info">💡 신규 요소가 있으면 해당 항목을 체크하고 내용을 입력하세요. 신규성이 많을수록 위험도를 높게 평가합니다.</div>
+          <div class="form-grid">
+            <div class="form-row"><label>위험도</label>
+              <select id="f-risk" onchange="markRiskTouched()">
+                <option value="">선택</option>
+                <option value="낮음">낮음</option>
+                <option value="보통">보통</option>
+                <option value="높음">높음</option>
+                <option value="매우높음">매우 높음</option>
+              </select>
+              <div id="risk-suggest-hint" style="margin-top:6px; font-size:11px; color:#2563eb;"></div>
+            </div>
+          </div>
+          <div class="check-grid" style="margin-top:10px;">
+            <div class="check-item" id="chkitem-newform">
+              <label><input type="checkbox" id="c-newform" onchange="onNoveltyToggle(this,'newform')"> 신규 제형</label>
+              <textarea id="f-newform_note" placeholder="신규 제형 상세 (제형 타입·변경점·검증 필요사항)"></textarea>
+            </div>
+            <div class="check-item" id="chkitem-newmaterial">
+              <label><input type="checkbox" id="c-newmaterial" onchange="onNoveltyToggle(this,'newmaterial')"> 신규 자재 (원료·부자재)</label>
+              <textarea id="f-newmaterial_note" placeholder="신규 자재 상세 (원료/용기/부자재, MSDS·COA 필요 여부)"></textarea>
+            </div>
+            <div class="check-item" id="chkitem-newfill">
+              <label><input type="checkbox" id="c-newfill" onchange="onNoveltyToggle(this,'newfill')"> 신규 충진/포장 방식</label>
+              <textarea id="f-newfill_note" placeholder="신규 충진·포장 방식 상세 (충진기·라인·포장 형태 변경 등)"></textarea>
+            </div>
+            <div class="check-item" id="chkitem-newetc">
+              <label><input type="checkbox" id="c-newetc" onchange="onNoveltyToggle(this,'newetc')"> 기타 신규사항</label>
+              <textarea id="f-newetc_note" placeholder="그 외 신규/특이 요소"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="section">
           <div class="section-title">👥 프로젝트 정보</div>
           <div class="form-grid col-3">
             <div class="form-row"><label>고객사 <span class="req">*</span></label><input type="text" id="f-client"></div>
@@ -883,40 +917,6 @@
 
       <!-- 품질/리스크 -->
       <div id="form-quality" class="form-section" style="display:none;">
-        <div class="section">
-          <div class="section-title">🆕 신규성 검토 / 위험도</div>
-          <div class="hint-info">💡 신규 요소가 있으면 해당 항목을 체크하고 내용을 입력하세요. 신규성이 많을수록 위험도를 높게 평가합니다.</div>
-          <div class="form-grid">
-            <div class="form-row"><label>위험도</label>
-              <select id="f-risk" onchange="markRiskTouched()">
-                <option value="">선택</option>
-                <option value="낮음">낮음</option>
-                <option value="보통">보통</option>
-                <option value="높음">높음</option>
-                <option value="매우높음">매우 높음</option>
-              </select>
-              <div id="risk-suggest-hint" style="margin-top:6px; font-size:11px; color:#2563eb;"></div>
-            </div>
-          </div>
-          <div class="check-grid" style="margin-top:10px;">
-            <div class="check-item" id="chkitem-newform">
-              <label><input type="checkbox" id="c-newform" onchange="onNoveltyToggle(this,'newform')"> 신규 제형</label>
-              <textarea id="f-newform_note" placeholder="신규 제형 상세 (제형 타입·변경점·검증 필요사항)"></textarea>
-            </div>
-            <div class="check-item" id="chkitem-newmaterial">
-              <label><input type="checkbox" id="c-newmaterial" onchange="onNoveltyToggle(this,'newmaterial')"> 신규 자재 (원료·부자재)</label>
-              <textarea id="f-newmaterial_note" placeholder="신규 자재 상세 (원료/용기/부자재, MSDS·COA 필요 여부)"></textarea>
-            </div>
-            <div class="check-item" id="chkitem-newfill">
-              <label><input type="checkbox" id="c-newfill" onchange="onNoveltyToggle(this,'newfill')"> 신규 충진/포장 방식</label>
-              <textarea id="f-newfill_note" placeholder="신규 충진·포장 방식 상세 (충진기·라인·포장 형태 변경 등)"></textarea>
-            </div>
-            <div class="check-item" id="chkitem-newetc">
-              <label><input type="checkbox" id="c-newetc" onchange="onNoveltyToggle(this,'newetc')"> 기타 신규사항</label>
-              <textarea id="f-newetc_note" placeholder="그 외 신규/특이 요소"></textarea>
-            </div>
-          </div>
-        </div>
         <div class="section">
           <div class="section-title">🎯 완제품 품질 판정</div>
           <div class="form-grid">
@@ -2225,7 +2225,8 @@ const ATTEND_ITEMS = [
 
 // Map each form field to the section it belongs to — used for relay-writing audit.
 const SECTION_FIELDS = {
-  basic: ['docno','rev','reqdate','urgency','scope','client','brand','project','dept','sales','ri','qa','pd','prod','request','purpose','cost'],
+  basic: ['docno','rev','reqdate','urgency','scope','client','brand','project','dept','sales','ri','qa','pd','prod','request','purpose','cost',
+    'risk','newform_note','newmaterial_note','newfill_note','newetc_note'],
   product: ['fgcode','product','qty','batch','pilotdate','pilotdone','launch','launchqty','sampledate','sampleto'],
   bulk: ['bulkcode','formula','batchsize','material','newmat','equipment','caution',
     'sg_cond','sg_now','sg_next','visc_cond','visc_now','visc_next','hard_cond','hard_now','hard_next',
@@ -2233,14 +2234,14 @@ const SECTION_FIELDS = {
   filling: ['fillwt','filltol','filltemp','labelvol','melttemp','fillnote',
     'line','lineKey','capa','capaOk','filltype','fillspeed','nozzle','firstart',
     'container','volume','torque','holder','tunnel'],
-  quality: ['limit','function','newtech','pconcern','fconcern','scaleup',
-    'risk','newform_note','newmaterial_note','newfill_note','newetc_note'],
+  quality: ['limit','function','newtech','pconcern','fconcern','scaleup'],
   approval: ['status','pilotstatus','richeck','pdcheck','memo','sig1','sig2','sig3','sig4',
     'att_ri_name','att_qa_name','att_sales_name','att_prod_name'],
 };
 // 섹션별 체크박스 — diff 시 어느 섹션 변경으로 볼지 결정
 const SECTION_CHECKS = {
-  quality: ['bom','msds','coa','drawing','limit','prior','newform','newmaterial','newfill','newetc'],
+  basic: ['newform','newmaterial','newfill','newetc'],
+  quality: ['bom','msds','coa','drawing','limit','prior'],
   approval: ['att_ri','att_qa','att_sales','att_prod'],
 };
 const SECTION_LABEL = { basic:'기본 정보', product:'제품 정보', bulk:'벌크 제조', filling:'충진/포장', quality:'품질/리스크', approval:'승인/진행', xp:'수출 정보' };
@@ -3224,6 +3225,7 @@ function viewDetail(id) {
       ${row('문서번호', r.docno)}${row('개정', r.rev)}
       ${row('요청일', r.reqdate)}${rowHtml('긴급도', `<span class="badge ${urgencyBadge(r.urgency)}">${urgencyLabel(r.urgency)}</span>`)}
       ${riskRow}
+      ${noveltyRow}
       ${scopeRow}
       ${rowHtml('상태', `<span class="badge ${statusBadge(r.status)}">${statusLabel(r.status)}</span>`)}
     </div>
@@ -3265,8 +3267,6 @@ function viewDetail(id) {
     <div class="section">
       <div class="section-title">🎯 품질 / 리스크</div>
       ${smStamp('quality')}
-      ${riskRow}
-      ${noveltyRow}
       ${row('한도견본 유무', r.limit)}
       ${rowHtml('한도견본 사진', safePhotoSrc(r.photo_limit) ? `<img class="photo-view" src="${safePhotoSrc(r.photo_limit)}">` : '')}
       ${row('기능 검사 항목', r.function)}
