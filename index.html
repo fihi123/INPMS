@@ -75,6 +75,18 @@
   .stat-card.issue { border-top-color: var(--danger); }
   .stat-card .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
   .stat-card .value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+  .stat-card.risk { border-top-color: #f97316; }
+
+  /* 필수 확인 사항 바 */
+  .must-check-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: var(--bg-surface); border: 1px solid var(--border); border-left: 3px solid var(--warning); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 16px; }
+  .must-check-bar .mc-title { font-size: 13px; font-weight: 700; color: #92400e; margin-right: 4px; }
+  .mc-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; cursor: pointer; transition: background .15s, border-color .15s, box-shadow .15s; }
+  .mc-chip:hover { box-shadow: 0 1px 4px rgba(17,24,39,0.12); }
+  .mc-chip strong { font-size: 13px; font-weight: 800; }
+  .mc-chip.zero { opacity: .45; }
+  .mc-chip.active { background: #fff7ed; border-color: #fdba74; color: #c2410c; }
+  .mc-chip.mc-allclear { color: #047857; background: var(--success-soft); border-color: var(--success-border); cursor: default; }
+  .mc-chip.mc-allclear:hover { box-shadow: none; }
 
   /* Banner — light info box (blue tint) */
   .banner { background: var(--accent-soft); border: 1px solid var(--accent-border); border-left: 3px solid var(--accent); padding: 12px 14px; border-radius: var(--radius); margin-bottom: 14px; font-size: 13px; color: #1e3a8a; line-height: 1.55; }
@@ -485,10 +497,18 @@
       <div class="stat-card issue clickable" tabindex="0" onclick="jumpToStatus('issue')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();jumpToStatus('issue');}" title="지연/이슈 필터"><div class="label">지연/이슈</div><div class="value" id="stat-issue">0</div></div>
     </div>
 
-    <h3 style="margin: 18px 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">🔥 긴급/이슈 건 (Top)</h3>
+    <div id="must-check-bar" class="must-check-bar" style="display:none;">
+      <span class="mc-title">⚠ 필수 확인 사항</span>
+      <button class="mc-chip" id="mc-chip-highrisk" onclick="jumpToDashFilter('highrisk')" title="위험도 높음·매우높음 (미완료) — 클릭 시 리스트에서 필터링">🔴 고위험 <strong id="mc-highrisk">0</strong></button>
+      <button class="mc-chip" id="mc-chip-capa" onclick="jumpToDashFilter('capa')" title="시생산 예정·진행 중인데 생산 CAPA 미확인 — 클릭 시 필터링">⚠ CAPA 미확인 <strong id="mc-capa">0</strong></button>
+      <button class="mc-chip" id="mc-chip-novelty" onclick="jumpToDashFilter('novelty')" title="신규 제형·자재·충진/포장 등 신규성 포함 (미완료) — 클릭 시 필터링">🆕 신규성 <strong id="mc-novelty">0</strong></button>
+      <button class="mc-chip" id="mc-chip-soonpilot" onclick="jumpToDashFilter('soonpilot')" title="7일 내 시생산 예정 또는 경과(미완료) — 클릭 시 필터링">⏰ 시생산 임박 <strong id="mc-soonpilot">0</strong></button>
+    </div>
+
+    <h3 style="margin: 18px 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">🔥 긴급·고위험·이슈 건 (Top)</h3>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>요청일</th><th>긴급도</th><th>품목코드</th><th>제품명</th><th>수량</th><th>영업</th><th>상태</th><th>CAPA</th><th>최근 업데이트</th><th>액션</th></tr></thead>
+        <thead><tr><th>요청일</th><th>긴급도</th><th>위험도</th><th>품목코드</th><th>제품명</th><th>수량</th><th>영업</th><th>상태</th><th>CAPA</th><th>최근 업데이트</th><th>액션</th></tr></thead>
         <tbody id="urgent-tbody"></tbody>
       </table>
     </div>
@@ -522,6 +542,11 @@
         <div id="col-toggle-menu" class="col-toggle-menu"></div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="resetListFilters()" title="검색어와 필터를 모두 초기화">↺ 초기화</button>
+    </div>
+
+    <div id="list-active-filter" style="display:none; align-items:center; gap:10px; background:#fff7ed; border:1px solid #fdba74; border-radius:var(--radius-sm); padding:8px 12px; margin-bottom:10px; font-size:13px; color:#c2410c;">
+      <span id="list-active-filter-text"></span>
+      <button class="btn btn-outline btn-sm" onclick="resetListFilters()">전체 보기</button>
     </div>
 
     <div class="table-wrap">
@@ -1499,6 +1524,7 @@ function jumpToStatus(status) {
   if (sUrg) sUrg.value = '';
   if (sStatus) sStatus.value = status || '';
   reviewerQueueFilter = null;
+  dashboardFilter = null;
   renderList();
 }
 
@@ -1520,20 +1546,28 @@ function renderStats() {
   renderStorageUsage();
   renderProfileBanner();
   renderReviewerQueue();
+  renderMustCheck();
 
-  const urgent = requests.filter(r=>r.status==='issue' || r.urgency==='critical')
-    .sort((a,b)=>new Date(b.reqdate||'')-new Date(a.reqdate||'')).slice(0,10);
+  // 긴급(최우선) · 지연/이슈 · 고위험(높음·매우높음) 건을 우선순위순으로 표시
+  const isHighRisk = r => r.risk === '높음' || r.risk === '매우높음';
+  const urgent = requests.filter(r=>r.status==='issue' || r.urgency==='critical' || isHighRisk(r))
+    .sort((a,b)=>priorityScore(b)-priorityScore(a)).slice(0,10);
   const tb = document.getElementById('urgent-tbody');
   tb.innerHTML = urgent.map(r=>{
     const latest = latestUpdate(r);
     const capaOk = recordCapaOk(r);
     const sid = safeId(r.id);
+    const rkCls = riskBadge(r.risk);
+    const riskCell = r.risk && rkCls ? `<span class="badge ${rkCls}">${esc(riskLabel(r.risk))}</span>` : '<span style="color:#cbd5e1">-</span>';
+    const hasNovelty = NOVELTY_ITEMS.some(it => r['chk_'+it.key]);
+    const novTag = hasNovelty ? ' <span class="badge b-risk-mid" style="font-size:10px" title="신규 제형·자재·충진/포장 등 신규성 포함">신규</span>' : '';
     return `
     <tr style="cursor:pointer" onclick="viewDetail('${sid}')">
       <td>${dash(r.reqdate)}</td>
       <td><span class="badge ${urgencyBadge(r.urgency)}">${urgencyLabel(r.urgency)}</span></td>
+      <td>${riskCell}</td>
       <td><strong>${dash(r.fgcode)}</strong></td>
-      <td>${dash(r.product)}</td>
+      <td>${dash(r.product)}${novTag}</td>
       <td>${dash(r.qty)}</td>
       <td>${dash(r.sales)}</td>
       <td><span class="badge ${statusBadge(r.status)}">${statusLabel(r.status)}</span></td>
@@ -1541,7 +1575,54 @@ function renderStats() {
       <td style="font-size:11px;color:#64748b">${latest ? `<strong>${esc(latest.date)}</strong> [${esc(latest.stage)}] ${esc((latest.note||'').substring(0,30))}` : '-'}</td>
       <td><button class="btn btn-primary btn-sm write-only" onclick="openQuickUpdate('${sid}', event)" title="상태·메모 빠른 업데이트">⚡</button></td>
     </tr>
-  `;}).join('') || '<tr><td colspan="10" style="text-align:center;color:#94a3b8;padding:20px">긴급/이슈 건이 없습니다</td></tr>';
+  `;}).join('') || '<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:20px">긴급·고위험·이슈 건이 없습니다</td></tr>';
+}
+
+// ===== 대시보드 필수 확인 사항 =====
+const DASH_FILTERS = {
+  highrisk: r => (r.risk === '높음' || r.risk === '매우높음') && r.status !== 'done',
+  capa: r => !recordCapaOk(r) && r.status !== 'done' && (r.pilotstatus === '예정' || r.pilotstatus === '진행중'),
+  novelty: r => r.status !== 'done' && NOVELTY_ITEMS.some(it => r['chk_'+it.key]),
+  soonpilot: r => {
+    if (!r.pilotdate || r.pilotstatus === '완료' || r.status === 'done') return false;
+    const d = new Date(r.pilotdate);
+    if (isNaN(d)) return false;
+    const days = Math.floor((d - new Date()) / 86400000);
+    return days <= 7;
+  },
+};
+const DASH_FILTER_LABEL = { highrisk:'고위험', capa:'CAPA 미확인', novelty:'신규성 포함', soonpilot:'시생산 임박' };
+
+function renderMustCheck() {
+  const bar = document.getElementById('must-check-bar');
+  if (!bar) return;
+  if (requests.length === 0) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+  let total = 0;
+  Object.keys(DASH_FILTERS).forEach(key => {
+    const n = requests.filter(DASH_FILTERS[key]).length;
+    total += n;
+    const numEl = document.getElementById('mc-' + key);
+    const chipEl = document.getElementById('mc-chip-' + key);
+    if (numEl) numEl.textContent = n;
+    if (chipEl) {
+      chipEl.classList.toggle('zero', n === 0);
+      chipEl.classList.toggle('active', dashboardFilter === key);
+    }
+  });
+}
+
+function jumpToDashFilter(key) {
+  if (!DASH_FILTERS[key]) return;
+  const listTab = Array.from(document.querySelectorAll('.tabs .tab')).find(t => t.textContent.includes('리스트'));
+  if (listTab) switchTab('list', listTab);
+  ['filter-status','filter-urgency'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const s = document.getElementById('search'); if (s) s.value = '';
+  const d = document.getElementById('filter-dept'); if (d) d.value = '';
+  reviewerQueueFilter = null;
+  dashboardFilter = key;
+  renderList();
+  showSnackbar(`📌 "${DASH_FILTER_LABEL[key]}" 건만 표시 중 · [↺ 초기화]로 해제`);
 }
 
 function renderReviewerQueue() {
@@ -1581,11 +1662,13 @@ function jumpToReviewerQueue(kind) {
   }
   // Use a temporary flag to narrow further: PD-pending only
   reviewerQueueFilter = kind || null;
+  dashboardFilter = null;
   const sortSel = document.getElementById('sort-list');
   if (sortSel) sortSel.value = 'priority';
   renderList();
 }
 var reviewerQueueFilter = null;
+var dashboardFilter = null; // 대시보드 "필수 확인 사항" 칩에서 설정하는 임시 필터
 
 function latestUpdate(r) {
   const ups = r.updates || [];
@@ -1738,10 +1821,12 @@ function resetListFilters() {
   const sortSel = document.getElementById('sort-list');
   if (sortSel) sortSel.selectedIndex = 0;
   reviewerQueueFilter = null;
+  dashboardFilter = null;
+  renderMustCheck();
   renderList();
 }
 
-// Score for "priority" sort: urgency weight + days waiting + proximity to pilot date.
+// Score for "priority" sort: urgency weight + days waiting + proximity to pilot date + 위험도.
 // Completed requests score at 0 so they sink to the bottom.
 function priorityScore(r) {
   if (r.status === 'done') return 0;
@@ -1765,7 +1850,8 @@ function priorityScore(r) {
   }
   const pdPending = ((r.pdcheck || '대기') !== '완료') ? 8 : 0;
   const issueBoost = (r.status === 'issue') ? 10 : 0;
-  return urgencyW + Math.min(daysWait, 30) + proximity + pdPending + issueBoost;
+  const riskW = r.risk === '매우높음' ? 16 : (r.risk === '높음' ? 8 : 0);
+  return urgencyW + Math.min(daysWait, 30) + proximity + pdPending + issueBoost + riskW;
 }
 
 function renderList() {
@@ -1773,6 +1859,17 @@ function renderList() {
   const fs = document.getElementById('filter-status').value;
   const fu = document.getElementById('filter-urgency').value;
   const fd = document.getElementById('filter-dept').value.trim().toLowerCase();
+
+  // 대시보드/검토 큐 임시 필터 안내 줄
+  const afBox = document.getElementById('list-active-filter');
+  const afText = document.getElementById('list-active-filter-text');
+  if (afBox && afText) {
+    let label = '';
+    if (dashboardFilter && DASH_FILTER_LABEL[dashboardFilter]) label = `📌 대시보드 필터 적용 중: "${DASH_FILTER_LABEL[dashboardFilter]}"`;
+    else if (reviewerQueueFilter) label = '🛠 공정개발 검토 큐 필터 적용 중';
+    afText.textContent = label;
+    afBox.style.display = label ? 'flex' : 'none';
+  }
 
   let list = requests.filter(r=>{
     if (fs && r.status!==fs) return false;
@@ -1783,6 +1880,8 @@ function renderList() {
                  r.ri,r.qa,r.pd,r.prod,r.dept,r.bulkcode,r.formula,r.line,r.batch].join(' ').toLowerCase();
       if (!s.includes(q)) return false;
     }
+    // Dashboard "필수 확인 사항" narrowing (set by jumpToDashFilter)
+    if (dashboardFilter && DASH_FILTERS[dashboardFilter] && !DASH_FILTERS[dashboardFilter](r)) return false;
     // Reviewer-queue narrowing (set by jumpToReviewerQueue)
     if (reviewerQueueFilter) {
       if ((r.pdcheck || '대기') === '완료' || r.status === 'done') return false;
