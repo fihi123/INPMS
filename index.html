@@ -800,6 +800,22 @@
             <div class="form-row"><label>벌크 코드</label><input type="text" id="f-bulkcode"></div>
             <div class="form-row"><label>처방번호</label><input type="text" id="f-formula" placeholder="예: F-2026-0125"></div>
             <div class="form-row"><label>배치 사이즈</label><input type="text" id="f-batchsize" placeholder="예: 500 kg"></div>
+            <div class="form-row"><label>유형</label>
+              <select id="f-bulktype">
+                <option value="">선택</option>
+                <option>O/W 유화</option>
+                <option>W/O 유화</option>
+                <option>W/S 유화</option>
+                <option>가용화</option>
+                <option>유분산</option>
+                <option>수분산</option>
+                <option>유화 스틱</option>
+                <option>유분산 스틱</option>
+                <option>수분산 스틱</option>
+                <option>분말</option>
+                <option>기타</option>
+              </select>
+            </div>
             <div class="form-row"><label>원료 수급 현황</label>
               <select id="f-material"><option value="">선택</option><option>입고 완료</option><option>대기</option><option>대체품 사용</option></select>
             </div>
@@ -807,6 +823,7 @@
               <select id="f-newmat" onchange="onNewmatChange()"><option value="N">N</option><option value="Y">Y (MSDS 필수)</option></select>
               <div class="hint" style="margin-top:4px; font-size:11px; color:#94a3b8;">Y 선택 시 품질/리스크 탭의 「신규 자재」가 자동 체크됩니다.</div>
             </div>
+            <div class="form-row full"><label>스펙</label><textarea id="f-bulkspec" placeholder="예: pH 5.0~6.0, 점도 8,000~12,000 cps, 비중 0.95~1.00, SPF 50+/PA++++ 등 처방 핵심 스펙"></textarea></div>
           </div>
         </div>
         <div id="bulk-mfg">
@@ -2195,7 +2212,7 @@ function switchFormTab(name, el) {
 const FIELDS = ['docno','rev','reqdate','urgency','scope','client','brand','project','dept','sales','ri','qa','pd','prod',
   'request','purpose','cost','fgcode','product','qty','batch','launch','launchqty','sampledate','sampleto',
   'pilotdate','pilotdone',
-  'bulkcode','formula','batchsize','material','newmat','equipment','caution',
+  'bulkcode','formula','batchsize','bulktype','bulkspec','material','newmat','equipment','caution',
   'sg_cond','sg_now','sg_next','visc_cond','visc_now','visc_next','hard_cond','hard_now','hard_next',
   'bph_cond','bph_now','bph_next','appr_cond','appr_now','appr_next',
   'fillwt','filltol','filltemp','labelvol','melttemp','fillnote',
@@ -2229,7 +2246,7 @@ const SECTION_FIELDS = {
   basic: ['docno','rev','reqdate','urgency','scope','client','brand','project','dept','sales','ri','qa','pd','prod','request','purpose','cost',
     'risk','newform_note','newmaterial_note','newfill_note','newetc_note'],
   product: ['fgcode','product','qty','batch','pilotdate','pilotdone','launch','launchqty','sampledate','sampleto'],
-  bulk: ['bulkcode','formula','batchsize','material','newmat','equipment','caution',
+  bulk: ['bulkcode','formula','batchsize','bulktype','bulkspec','material','newmat','equipment','caution',
     'sg_cond','sg_now','sg_next','visc_cond','visc_now','visc_next','hard_cond','hard_now','hard_next',
     'bph_cond','bph_now','bph_next','appr_cond','appr_now','appr_next'],
   filling: ['fillwt','filltol','filltemp','labelvol','melttemp','fillnote',
@@ -2254,7 +2271,7 @@ const FIELD_LABELS = {
   qa:'품질담당', pd:'공정개발담당', prod:'생산담당', request:'요청사항', purpose:'목적/사유', cost:'비용 부담',
   fgcode:'완제품 코드', product:'제품명', qty:'시생산 수량', batch:'배치번호', launch:'발매 예정일',
   launchqty:'발매 예정 수량', sampledate:'샘플 발송일', sampleto:'샘플 전달처', pilotdate:'시생산 예정일', pilotdone:'시생산 완료일',
-  bulkcode:'벌크 코드', formula:'처방번호', batchsize:'배치 사이즈', material:'원료 수급', newmat:'신규 원료', equipment:'제조 장비', caution:'주의사항',
+  bulkcode:'벌크 코드', formula:'처방번호', batchsize:'배치 사이즈', bulktype:'유형', bulkspec:'스펙', material:'원료 수급', newmat:'신규 원료', equipment:'제조 장비', caution:'주의사항',
   sg_cond:'비중 조건', sg_now:'비중(즉시)', sg_next:'비중(익일)', visc_cond:'점도 조건', visc_now:'점도(즉시)', visc_next:'점도(익일)',
   hard_cond:'경도 조건', hard_now:'경도(즉시)', hard_next:'경도(익일)', bph_cond:'pH 조건', bph_now:'pH(즉시)', bph_next:'pH(익일)',
   appr_cond:'외관 조건', appr_now:'외관(즉시)', appr_next:'외관(익일)',
@@ -3248,6 +3265,7 @@ function viewDetail(id) {
       <div class="section-title">🧪 벌크 제조</div>
       ${smStamp('bulk')}
       ${row('벌크 코드', r.bulkcode)}${row('처방번호', r.formula)}${row('배치 사이즈', r.batchsize)}
+      ${row('유형', r.bulktype)}${row('스펙', r.bulkspec)}
       ${row('제조 장비', r.equipment)}${row('주의사항', r.caution)}
       ${bulkRow('비중', r.sg_cond, r.sg_now, r.sg_next)}
       ${bulkRow('점도 (cps)', r.visc_cond, r.visc_now, r.visc_next)}
@@ -3377,6 +3395,7 @@ function printRequest(id) {
       tr('발매 예정일', r.launch) + tr('발매 예정 수량', r.launchqty))}
     ${sectionTbl('🧪 벌크 제조',
       tr('벌크 코드', r.bulkcode) + tr('처방번호', r.formula) + tr('배치 사이즈', r.batchsize) +
+      tr('유형', r.bulktype) + tr('스펙', r.bulkspec) +
       tr('원료 수급', r.material) + tr('신규 원료', r.newmat) + tr('제조 장비', r.equipment) + tr('주의사항', r.caution))}
     ${sectionTbl('🚰 충진/포장',
       tr('충진량(g)', r.fillwt) + tr('허용오차', r.filltol) + tr('충진 온도', r.filltemp) +
@@ -3454,6 +3473,8 @@ function copyRequestToClipboard(id) {
     '■ 벌크 / 충진',
     line('벌크 코드', r.bulkcode),
     line('처방번호', r.formula),
+    line('유형', r.bulktype),
+    line('스펙', r.bulkspec),
     line('배치 사이즈', r.batchsize),
     line('생산라인', r.line),
     line('CAPA', r.capa),
@@ -3803,6 +3824,7 @@ function seedDummyData() {
       sampledate: '', sampleto: '',
       pilotdate: dAhead(14), pilotdone: '',
       bulkcode: 'BLK-2026-0045', formula: 'F-2026-0112', batchsize: '300 kg',
+      bulktype: '가용화', bulkspec: 'pH 5.0~6.0, 점도 50~300 cps, 비중 0.99~1.01',
       material: '입고 완료', newmat: 'N',
       equipment: 'Homo-mixer 500L', caution: '',
       sg_cond: '', sg_now: '', sg_next: '', visc_cond: '', visc_now: '', visc_next: '',
@@ -3838,6 +3860,7 @@ function seedDummyData() {
       sampledate: dAhead(14), sampleto: '고객사 마케팅팀',
       pilotdate: dAhead(7), pilotdone: '',
       bulkcode: 'BLK-2026-0058', formula: 'F-2026-0130', batchsize: '500 kg',
+      bulktype: 'O/W 유화', bulkspec: 'pH 5.5~6.5, 점도 10,000~15,000 cps, 비중 0.95~1.00',
       material: '대기', newmat: 'Y',
       equipment: 'Homo-mixer 1Ton + Vacuum', caution: '신규 원료 분산 시 고속 교반 필수',
       sg_cond: '25°C', sg_now: '0.98', sg_next: '0.98',
@@ -3878,6 +3901,7 @@ function seedDummyData() {
       sampledate: dAgo(3), sampleto: '고객사 QA + 마케팅',
       pilotdate: dAgo(2), pilotdone: '',
       bulkcode: 'BLK-2026-0071', formula: 'F-2026-0145', batchsize: '250 kg',
+      bulktype: '가용화', bulkspec: 'pH 4.0~5.0, 점도 5,000~10,000 cps, 펩타이드 1.0% 함량',
       material: '대체품 사용', newmat: 'Y',
       equipment: 'Homo-mixer 300L', caution: '펩타이드 성분 40°C 이하 유지. 고속 교반 금지.',
       sg_cond: '25°C', sg_now: '1.02', sg_next: '1.02',
@@ -3923,6 +3947,7 @@ function seedDummyData() {
       sampledate: dAgo(30), sampleto: '고객사 전 부서',
       pilotdate: dAgo(15), pilotdone: dAgo(12),
       bulkcode: 'BLK-2026-0032', formula: 'F-2026-0095', batchsize: '1,000 kg',
+      bulktype: 'O/W 유화', bulkspec: 'pH 5.0~6.0, 점도 2,500~4,000 cps, 비중 1.00~1.02',
       material: '입고 완료', newmat: 'N',
       equipment: 'Homo-mixer 2Ton', caution: '기존 공정 동일 적용',
       sg_cond: '25°C', sg_now: '1.01', sg_next: '1.01',
@@ -3965,6 +3990,7 @@ function seedDummyData() {
       sampledate: dAhead(20), sampleto: '고객사 마케팅 + 인플루언서',
       pilotdate: dAhead(10), pilotdone: '',
       bulkcode: '', formula: '', batchsize: '400 kg',
+      bulktype: '가용화', bulkspec: 'pH 3.5~4.5, 점도 1,000~3,000 cps, 비타민C 10% 안정화',
       material: '대기', newmat: 'Y',
       equipment: 'Homo-mixer 500L (질소 치환)', caution: '비타민C 산화 방지 - 차광/저온/질소 필수',
       sg_cond: '', sg_now: '', sg_next: '', visc_cond: '', visc_now: '', visc_next: '',
@@ -4000,6 +4026,7 @@ function seedDummyData() {
       sampledate: dAhead(18), sampleto: '해외영업 + 현지 바이어',
       pilotdate: dAhead(21), pilotdone: '',
       bulkcode: 'BLK-2026-0082', formula: 'F-2026-0158', batchsize: '600 kg',
+      bulktype: 'W/S 유화', bulkspec: 'pH 5.5~7.0, 점도 5,000~8,000 cps, SPF 50+ / PA++++',
       material: '입고 완료', newmat: 'N',
       equipment: 'Homo-mixer 1Ton', caution: 'TiO2/ZnO 분산 안정성 확보',
       sg_cond: '25°C', sg_now: '1.05', sg_next: '1.05',
@@ -4040,6 +4067,7 @@ function seedDummyData() {
       sampledate: dAgo(5), sampleto: '고객사 MD + QA',
       pilotdate: dAgo(3), pilotdone: '',
       bulkcode: 'BLK-2026-0066', formula: 'F-2026-0140', batchsize: '350 kg',
+      bulktype: '가용화', bulkspec: 'pH 5.0~6.0, 점도 300~800 cps, 콜라겐 5% 함유 시트 함침용',
       material: '입고 완료', newmat: 'N',
       equipment: '함침 라인 - 신규 부직포 대응', caution: '함침 균일도 - 25mL/매 ±0.5 mL',
       sg_cond: '25°C', sg_now: '1.02', sg_next: '1.02',
@@ -4082,6 +4110,7 @@ function seedDummyData() {
       sampledate: dAgo(7), sampleto: '연구소 + 마케팅',
       pilotdate: dAgo(5), pilotdone: '',
       bulkcode: 'BLK-2026-0061', formula: 'F-2026-0135', batchsize: '200 kg',
+      bulktype: '유분산', bulkspec: '경도 80~120 (Texture Analyzer), 융점 50~60°C, 외관: 반투명 미백색',
       material: '대체품 사용', newmat: 'Y',
       equipment: 'Homo-mixer 200L (가온형)', caution: '왁스 용융 75°C 유지, 냉각 시 결정화 관리',
       sg_cond: '25°C', sg_now: '0.92', sg_next: '0.92',
@@ -4123,6 +4152,7 @@ function seedDummyData() {
       sampledate: dAgo(40), sampleto: '고객사 + 현지 KOL',
       pilotdate: dAgo(25), pilotdone: dAgo(20),
       bulkcode: 'BLK-2026-0041', formula: 'F-2026-0108', batchsize: '150 kg',
+      bulktype: '유분산 스틱', bulkspec: '경도 120~180, 융점 65~75°C, 6종 색상 컬러 매칭 ±ΔE 1.5',
       material: '입고 완료', newmat: 'N',
       equipment: 'Wax mixer 200L + 충진기', caution: '색소 분산 균일도 - 색상 6종 batch 간 편차 관리',
       sg_cond: '25°C', sg_now: '0.95', sg_next: '0.95',
@@ -4165,6 +4195,7 @@ function seedDummyData() {
       sampledate: dAgo(22), sampleto: '마케팅 + QA',
       pilotdate: dAgo(15), pilotdone: dAgo(12),
       bulkcode: 'BLK-2026-0055', formula: 'F-2026-0125', batchsize: '180 kg',
+      bulktype: 'O/W 유화', bulkspec: 'pH 6.0~7.5, 점도 8,000~12,000 cps, 카본블랙 안료 분산 안정성',
       material: '입고 완료', newmat: 'N',
       equipment: '마스카라 전용 충진기', caution: '신규 브러시 - 와이퍼 사양 변경 적용',
       sg_cond: '25°C', sg_now: '1.08', sg_next: '1.08',
