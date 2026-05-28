@@ -122,9 +122,22 @@
   .b-pilot-inprogress { background: var(--accent-soft); color: #1d4ed8; border-color: var(--accent-border); }
   .b-pilot-done { background: var(--success-soft); color: #047857; border-color: var(--success-border); }
   .b-pilot-stopped { background: var(--danger-soft); color: #991b1b; border-color: #fca5a5; }
+  .b-risk-low { background: var(--success-soft); color: #047857; border-color: var(--success-border); }
+  .b-risk-mid { background: var(--warning-soft); color: #b45309; border-color: var(--warning-border); }
+  .b-risk-high { background: #fff1e6; color: #c2410c; border-color: #fdba74; }
+  .b-risk-crit { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
 
   .capa-missing { color: var(--danger); font-weight: 700; }
   .capa-ok { color: var(--success); font-weight: 600; }
+
+  /* 신규성 / 참석 체크 항목 */
+  .check-item { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-subtle); }
+  .check-item.checked { border-color: var(--accent-border); background: var(--accent-soft); }
+  .check-item > label { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; margin: 0; }
+  .check-item input[type="checkbox"] { width: 16px; height: 16px; }
+  .check-item textarea, .check-item input[type="text"] { width: 100%; }
+  .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 720px) { .check-grid { grid-template-columns: 1fr; } }
 
   /* Modal — clean white with subtle shadow */
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(17,24,39,0.5); z-index: 1000; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 20px; }
@@ -516,6 +529,7 @@
         <thead><tr>
           <th data-col="reqdate">요청일</th>
           <th data-col="urgency">긴급도</th>
+          <th data-col="risk">위험도</th>
           <th data-col="dept">부서</th>
           <th data-col="fgcode">품목코드</th>
           <th data-col="product">제품명 / 범위</th>
@@ -821,6 +835,39 @@
       <!-- 품질/리스크 -->
       <div id="form-quality" class="form-section" style="display:none;">
         <div class="section">
+          <div class="section-title">🆕 신규성 검토 / 위험도</div>
+          <div class="hint-info">💡 신규 요소가 있으면 해당 항목을 체크하고 내용을 입력하세요. 신규성이 많을수록 위험도를 높게 평가합니다.</div>
+          <div class="form-grid">
+            <div class="form-row"><label>위험도</label>
+              <select id="f-risk">
+                <option value="">선택</option>
+                <option value="낮음">낮음</option>
+                <option value="보통">보통</option>
+                <option value="높음">높음</option>
+                <option value="매우높음">매우 높음</option>
+              </select>
+            </div>
+          </div>
+          <div class="check-grid" style="margin-top:10px;">
+            <div class="check-item" id="chkitem-newform">
+              <label><input type="checkbox" id="c-newform" onchange="onNoveltyToggle(this,'newform')"> 신규 제형</label>
+              <textarea id="f-newform_note" placeholder="신규 제형 상세 (제형 타입·변경점·검증 필요사항)"></textarea>
+            </div>
+            <div class="check-item" id="chkitem-newmaterial">
+              <label><input type="checkbox" id="c-newmaterial" onchange="onNoveltyToggle(this,'newmaterial')"> 신규 자재 (원료·부자재)</label>
+              <textarea id="f-newmaterial_note" placeholder="신규 자재 상세 (원료/용기/부자재, MSDS·COA 필요 여부)"></textarea>
+            </div>
+            <div class="check-item" id="chkitem-newfill">
+              <label><input type="checkbox" id="c-newfill" onchange="onNoveltyToggle(this,'newfill')"> 신규 충진/포장 방식</label>
+              <textarea id="f-newfill_note" placeholder="신규 충진·포장 방식 상세 (충진기·라인·포장 형태 변경 등)"></textarea>
+            </div>
+            <div class="check-item" id="chkitem-newetc">
+              <label><input type="checkbox" id="c-newetc" onchange="onNoveltyToggle(this,'newetc')"> 기타 신규사항</label>
+              <textarea id="f-newetc_note" placeholder="그 외 신규/특이 요소"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="section">
           <div class="section-title">🎯 완제품 품질 판정</div>
           <div class="form-grid">
             <div class="form-row"><label>한도견본 유무</label>
@@ -1014,6 +1061,28 @@
             <div class="form-row"><label>검토 (연구소)</label><input type="text" id="f-sig2" placeholder="성명"></div>
             <div class="form-row"><label>접수 (공정개발)</label><input type="text" id="f-sig3" placeholder="성명"></div>
             <div class="form-row"><label>최종 승인</label><input type="text" id="f-sig4" placeholder="성명"></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">🙋 유관부서 시생산 참석</div>
+          <div class="hint-info">💡 시생산에 참석한(또는 참석 예정인) 유관부서를 체크하고 참석자명을 입력하세요.</div>
+          <div class="check-grid">
+            <div class="check-item" id="chkitem-att_ri">
+              <label><input type="checkbox" id="c-att_ri" onchange="onAttendToggle(this,'att_ri')"> 연구소</label>
+              <input type="text" id="f-att_ri_name" placeholder="참석자명">
+            </div>
+            <div class="check-item" id="chkitem-att_qa">
+              <label><input type="checkbox" id="c-att_qa" onchange="onAttendToggle(this,'att_qa')"> 품질</label>
+              <input type="text" id="f-att_qa_name" placeholder="참석자명">
+            </div>
+            <div class="check-item" id="chkitem-att_sales">
+              <label><input type="checkbox" id="c-att_sales" onchange="onAttendToggle(this,'att_sales')"> 영업</label>
+              <input type="text" id="f-att_sales_name" placeholder="참석자명">
+            </div>
+            <div class="check-item" id="chkitem-att_prod">
+              <label><input type="checkbox" id="c-att_prod" onchange="onAttendToggle(this,'att_prod')"> 생산·공정개발</label>
+              <input type="text" id="f-att_prod_name" placeholder="참석자명">
+            </div>
           </div>
         </div>
       </div>
@@ -1540,6 +1609,26 @@ function urgencyLabel(u) {
 }
 function scopeBadge(s) { return {'제조 + 충진/포장':'b-scope-both','제조만':'b-scope-bulk','충진/포장만':'b-scope-fill'}[s]||''; }
 function pilotStatusBadge(p) { return {'예정':'b-pilot-scheduled','진행중':'b-pilot-inprogress','완료':'b-pilot-done','중단':'b-pilot-stopped'}[p]||''; }
+function riskBadge(r) { return {'낮음':'b-risk-low','보통':'b-risk-mid','높음':'b-risk-high','매우높음':'b-risk-crit'}[r]||''; }
+function riskLabel(r) { return r === '매우높음' ? '매우 높음' : (r || ''); }
+
+// 신규성/참석 체크 시 카드에 시각적 강조(.checked) 부여
+function onNoveltyToggle(el, key) {
+  const wrap = document.getElementById('chkitem-' + key);
+  if (wrap) wrap.classList.toggle('checked', el.checked);
+}
+function onAttendToggle(el, key) {
+  const wrap = document.getElementById('chkitem-' + key);
+  if (wrap) wrap.classList.toggle('checked', el.checked);
+}
+// 폼 로드 시 체크 상태를 카드 강조에 반영
+function syncCheckItemHighlights() {
+  ['newform','newmaterial','newfill','newetc','att_ri','att_qa','att_sales','att_prod'].forEach(k => {
+    const cb = document.getElementById('c-' + k);
+    const wrap = document.getElementById('chkitem-' + k);
+    if (cb && wrap) wrap.classList.toggle('checked', cb.checked);
+  });
+}
 function updateScopeTabs() {
   const sel = document.getElementById('f-scope');
   const scope = (sel && sel.value) || '제조 + 충진/포장';
@@ -1739,6 +1828,7 @@ function renderList() {
     <tr>
       <td data-col="reqdate" data-label="요청일">${dash(r.reqdate)}</td>
       <td data-col="urgency" data-label="긴급도"><span class="badge ${urgencyBadge(r.urgency)}">${urgencyLabel(r.urgency)}</span></td>
+      <td data-col="risk" data-label="위험도">${r.risk && riskBadge(r.risk) ? `<span class="badge ${riskBadge(r.risk)}">${esc(riskLabel(r.risk))}</span>` : '<span style="color:#cbd5e1">-</span>'}</td>
       <td data-col="dept" data-label="부서">${dash(r.dept)}</td>
       <td data-col="fgcode" data-label="품목코드"><strong>${dash(r.fgcode)}</strong></td>
       <td data-col="product" data-label="제품명">${dash(r.product)}${scopeHtml}</td>
@@ -1754,7 +1844,7 @@ function renderList() {
         <button class="btn btn-outline btn-sm write-only" onclick="event.stopPropagation(); duplicateItem('${sid}')" title="이 요청서를 템플릿으로 신규 생성">📑</button>
       </td>
     </tr>
-  `;}).join('') || '<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:30px">조건에 맞는 항목이 없습니다</td></tr>';
+  `;}).join('') || '<tr><td colspan="12" style="text-align:center;color:#94a3b8;padding:30px">조건에 맞는 항목이 없습니다</td></tr>';
   applyColumnVisibility();
 }
 
@@ -1762,6 +1852,7 @@ function renderList() {
 const COL_DEFS = [
   { key: 'reqdate', label: '요청일', defaultOn: true },
   { key: 'urgency', label: '긴급도', defaultOn: true },
+  { key: 'risk', label: '위험도', defaultOn: true },
   { key: 'dept', label: '부서', defaultOn: false },
   { key: 'fgcode', label: '품목코드', defaultOn: true },
   { key: 'product', label: '제품명', defaultOn: true },
@@ -1933,9 +2024,27 @@ const FIELDS = ['docno','rev','reqdate','urgency','scope','client','brand','proj
   'line','lineKey','capa','capaOk','filltype','fillspeed','nozzle','firstart',
   'container','volume','torque','holder','tunnel',
   'limit','function','newtech','pconcern','fconcern','scaleup',
-  'status','pilotstatus','richeck','pdcheck','memo','sig1','sig2','sig3','sig4'];
+  'risk','newform_note','newmaterial_note','newfill_note','newetc_note',
+  'status','pilotstatus','richeck','pdcheck','memo','sig1','sig2','sig3','sig4',
+  'att_ri_name','att_qa_name','att_sales_name','att_prod_name'];
 
-const CHECKS = ['bom','msds','coa','drawing','limit','prior'];
+const CHECKS = ['bom','msds','coa','drawing','limit','prior',
+  'newform','newmaterial','newfill','newetc',
+  'att_ri','att_qa','att_sales','att_prod'];
+
+// 신규성 / 유관부서 참석 항목 정의 (상세보기·복사·CSV 공용)
+const NOVELTY_ITEMS = [
+  { key: 'newform', label: '신규 제형', note: 'newform_note' },
+  { key: 'newmaterial', label: '신규 자재', note: 'newmaterial_note' },
+  { key: 'newfill', label: '신규 충진/포장 방식', note: 'newfill_note' },
+  { key: 'newetc', label: '기타 신규사항', note: 'newetc_note' },
+];
+const ATTEND_ITEMS = [
+  { key: 'att_ri', label: '연구소', name: 'att_ri_name' },
+  { key: 'att_qa', label: '품질', name: 'att_qa_name' },
+  { key: 'att_sales', label: '영업', name: 'att_sales_name' },
+  { key: 'att_prod', label: '생산·공정개발', name: 'att_prod_name' },
+];
 
 // Map each form field to the section it belongs to — used for relay-writing audit.
 const SECTION_FIELDS = {
@@ -1947,8 +2056,15 @@ const SECTION_FIELDS = {
   filling: ['fillwt','filltol','filltemp','labelvol','melttemp','fillnote',
     'line','lineKey','capa','capaOk','filltype','fillspeed','nozzle','firstart',
     'container','volume','torque','holder','tunnel'],
-  quality: ['limit','function','newtech','pconcern','fconcern','scaleup'],
-  approval: ['status','pilotstatus','richeck','pdcheck','memo','sig1','sig2','sig3','sig4'],
+  quality: ['limit','function','newtech','pconcern','fconcern','scaleup',
+    'risk','newform_note','newmaterial_note','newfill_note','newetc_note'],
+  approval: ['status','pilotstatus','richeck','pdcheck','memo','sig1','sig2','sig3','sig4',
+    'att_ri_name','att_qa_name','att_sales_name','att_prod_name'],
+};
+// 섹션별 체크박스 — diff 시 어느 섹션 변경으로 볼지 결정
+const SECTION_CHECKS = {
+  quality: ['bom','msds','coa','drawing','limit','prior','newform','newmaterial','newfill','newetc'],
+  approval: ['att_ri','att_qa','att_sales','att_prod'],
 };
 const SECTION_LABEL = { basic:'기본 정보', product:'제품 정보', bulk:'벌크 제조', filling:'충진/포장', quality:'품질/리스크', approval:'승인/진행', xp:'수출 정보' };
 
@@ -1957,10 +2073,9 @@ function diffSection(section, oldRec, newRec) {
   for (const f of fields) {
     if ((oldRec?.[f] ?? '') !== (newRec[f] ?? '')) return true;
   }
-  if (section === 'quality') {
-    for (const c of CHECKS) {
-      if (!!(oldRec?.['chk_'+c]) !== !!newRec['chk_'+c]) return true;
-    }
+  const checks = SECTION_CHECKS[section] || [];
+  for (const c of checks) {
+    if (!!(oldRec?.['chk_'+c]) !== !!newRec['chk_'+c]) return true;
   }
   return false;
 }
@@ -1994,6 +2109,76 @@ function sanitizeSectionMeta(sm) {
     }
   });
   return Object.keys(out).length ? out : null;
+}
+
+// ===== 변경 이력 (이력 관리) =====
+// 저장 시점에 바뀐 섹션 라벨 목록을 산출
+function changedSections(oldRec, newRec) {
+  const out = [];
+  Object.keys(SECTION_FIELDS).forEach(s => { if (diffSection(s, oldRec, newRec)) out.push(SECTION_LABEL[s]); });
+  const oldXp = oldRec?.xp || null;
+  const newXp = newRec.xp || null;
+  if (JSON.stringify(oldXp) !== JSON.stringify(newXp)) out.push(SECTION_LABEL.xp);
+  // 첨부/사진/진행업데이트 변경도 감지
+  const photoChanged = PHOTO_KINDS.some(k => (oldRec?.['photo_'+k]||null) !== (newRec['photo_'+k]||null));
+  const docChanged = DOC_KINDS.some(k => JSON.stringify(oldRec?.['doc_'+k]||null) !== JSON.stringify(newRec['doc_'+k]||null));
+  if (photoChanged || docChanged) out.push('첨부/사진');
+  const oldUpd = (oldRec?.updates || []).length;
+  const newUpd = (newRec.updates || []).length;
+  if (oldUpd !== newUpd) out.push('진행 업데이트');
+  return out;
+}
+
+// 기존 이력에 이번 변경분을 1건 추가하여 반환 (변경 없으면 그대로)
+function appendHistory(oldRec, newRec) {
+  const hist = Array.isArray(oldRec?.history) ? oldRec.history.slice() : [];
+  const editor = authorTag() || (hasProfile() ? (profile.email || deptLabel(profile.role, profile.dept)) : '') || '-';
+  const at = new Date().toISOString();
+  if (!oldRec) {
+    hist.push({ at, editor, action: '생성', rev: newRec.rev || '', sections: [] });
+  } else {
+    const secs = changedSections(oldRec, newRec);
+    if (secs.length === 0) return hist;
+    hist.push({ at, editor, action: '수정', rev: newRec.rev || '', sections: secs });
+  }
+  return hist.slice(-100); // 저장 한계 보호: 최근 100건 유지
+}
+
+function sanitizeHistory(h) {
+  if (!h || typeof h !== 'object') return null;
+  const at = typeof h.at === 'string' ? h.at.slice(0, 30) : '';
+  if (!at) return null;
+  const editor = typeof h.editor === 'string' ? h.editor.slice(0, 200) : '';
+  const action = (h.action === '생성' || h.action === '수정') ? h.action : '수정';
+  const rev = typeof h.rev === 'string' ? h.rev.slice(0, 30) : '';
+  const sections = Array.isArray(h.sections)
+    ? h.sections.filter(s => typeof s === 'string').map(s => s.slice(0, 40)).slice(0, 30)
+    : [];
+  return { at, editor, action, rev, sections };
+}
+
+function fmtDateTime(iso) {
+  if (typeof iso !== 'string' || !iso) return '';
+  return iso.replace('T', ' ').slice(0, 16);
+}
+
+// 상세보기 변경 이력 렌더 (최신순)
+function renderHistory(hist) {
+  const list = Array.isArray(hist) ? hist.slice() : [];
+  if (!list.length) return '';
+  const rows = list.slice().reverse().map(h => {
+    const secs = (h.sections && h.sections.length) ? h.sections.join(', ') : (h.action === '생성' ? '신규 작성' : '-');
+    const actCls = h.action === '생성' ? 'b-done' : 'b-progress';
+    return `<div class="update-item">
+      <div class="update-head"><div class="update-meta">
+        <span class="update-date">${esc(fmtDateTime(h.at))}</span>
+        <span class="badge ${actCls}" style="font-size:10px">${esc(h.action || '수정')}${h.rev ? ' · ' + esc(h.rev) : ''}</span>
+        <span>✍ ${esc(h.editor || '-')}</span>
+      </div></div>
+      <div class="update-note">변경 항목: ${esc(secs)}</div>
+    </div>`;
+  }).join('');
+  return `<div class="section"><div class="section-title">🕘 변경 이력 (${list.length}건)</div>${rows}</div>`;
 }
 
 // Export-info (overseas sales) — nested object on the record.
@@ -2031,6 +2216,7 @@ function openForm() {
   document.getElementById('form-title').textContent = '＋ 신규 시생산 요청서 작성';
   document.getElementById('btn-delete').style.display = 'none';
   clearForm();
+  syncCheckItemHighlights();
   resetPhotos();
   resetDocs();
   toggleLimitAttach();
@@ -2129,6 +2315,7 @@ function editItem(id) {
     const el = document.getElementById('c-'+c);
     if (el) el.checked = !!r['chk_'+c];
   });
+  syncCheckItemHighlights();
   writeExportToForm(r.xp || null);
   updateExportSectionVisibility(!!r.xp);
   resetPhotos();
@@ -2217,6 +2404,7 @@ function saveForm() {
   const prevRec = editingId ? requests.find(r => r.id === editingId) : null;
   const newMeta = stampSectionMeta(prevRec, data);
   if (Object.keys(newMeta).length) data.sectionMeta = newMeta;
+  data.history = appendHistory(prevRec, data);
 
   if (editingId) {
     requests = requests.map(r=>r.id===editingId?data:r);
@@ -2764,12 +2952,22 @@ function viewDetail(id) {
   const psCls = pilotStatusBadge(r.pilotstatus);
   const pilotStatusRow = r.pilotstatus && psCls ?
     `<div class="detail-row"><div class="key">시생산 상태</div><div class="val"><span class="badge ${psCls}">${esc(r.pilotstatus)}</span></div></div>` : '';
+  const rkCls = riskBadge(r.risk);
+  const riskRow = r.risk && rkCls ?
+    `<div class="detail-row"><div class="key">위험도</div><div class="val"><span class="badge ${rkCls}">${esc(riskLabel(r.risk))}</span></div></div>` : '';
+  const noveltyHtml = NOVELTY_ITEMS.filter(it => r['chk_'+it.key]).map(it =>
+    `<div style="margin-bottom:4px;">✅ <strong>${esc(it.label)}</strong>${r[it.note] ? ' — ' + esc(r[it.note]) : ''}</div>`).join('');
+  const noveltyRow = noveltyHtml ? `<div class="detail-row"><div class="key">신규성</div><div class="val" style="white-space:pre-wrap">${noveltyHtml}</div></div>`
+    : '<div class="detail-row"><div class="key">신규성</div><div class="val" style="color:#94a3b8">해당 없음</div></div>';
+  const attendList = ATTEND_ITEMS.filter(it => r['chk_'+it.key]).map(it => `${esc(it.label)}${r[it.name] ? ' (' + esc(r[it.name]) + ')' : ''}`).join(', ');
+  const attendRow = `<div class="detail-row"><div class="key">유관부서 참석</div><div class="val">${attendList || '<span style="color:#94a3b8">미체크</span>'}</div></div>`;
   body.innerHTML = `
     <div class="section">
       <div class="section-title">📌 문서 관리 / 요청 정보</div>
       ${smStamp('basic')}
       ${row('문서번호', r.docno)}${row('개정', r.rev)}
       ${row('요청일', r.reqdate)}${rowHtml('긴급도', `<span class="badge ${urgencyBadge(r.urgency)}">${urgencyLabel(r.urgency)}</span>`)}
+      ${riskRow}
       ${scopeRow}
       ${rowHtml('상태', `<span class="badge ${statusBadge(r.status)}">${statusLabel(r.status)}</span>`)}
     </div>
@@ -2811,6 +3009,8 @@ function viewDetail(id) {
     <div class="section">
       <div class="section-title">🎯 품질 / 리스크</div>
       ${smStamp('quality')}
+      ${riskRow}
+      ${noveltyRow}
       ${row('한도견본 유무', r.limit)}
       ${rowHtml('한도견본 사진', safePhotoSrc(r.photo_limit) ? `<img class="photo-view" src="${safePhotoSrc(r.photo_limit)}">` : '')}
       ${row('기능 검사 항목', r.function)}
@@ -2856,9 +3056,11 @@ function viewDetail(id) {
       <div class="section-title">✍ 진행 / 승인</div>
       ${smStamp('approval')}
       ${row('연구소 검토', r.richeck)}${row('공정개발 확인', r.pdcheck)}
+      ${attendRow}
       ${row('메모', r.memo)}
       ${row('의뢰 서명', r.sig1)}${row('검토 서명', r.sig2)}${row('접수 서명', r.sig3)}${row('최종 승인', r.sig4)}
     </div>
+    ${renderHistory(r.history)}
   `;
   document.getElementById('detail-edit').onclick = ()=>{
     document.getElementById('detail-modal').classList.remove('active');
@@ -2887,6 +3089,7 @@ function copyRequestToClipboard(id) {
     '',
     line('요청일', r.reqdate),
     line('긴급도', urgencyLabel(r.urgency)),
+    line('위험도', riskLabel(r.risk)),
     line('진행 범위', r.scope),
     line('현재 상태', statusLabel(r.status)),
     '',
@@ -2926,6 +3129,16 @@ function copyRequestToClipboard(id) {
     line('시생산 상태', r.pilotstatus),
     line('메모', r.memo),
   ];
+  const novList = NOVELTY_ITEMS.filter(it => r['chk_'+it.key])
+    .map(it => `- ${it.label}${r[it.note] ? ': ' + r[it.note] : ''}`);
+  if (novList.length) {
+    parts.push('', '■ 신규성/위험도', ...novList);
+  }
+  const attList = ATTEND_ITEMS.filter(it => r['chk_'+it.key])
+    .map(it => `${it.label}${r[it.name] ? '(' + r[it.name] + ')' : ''}`);
+  if (attList.length) {
+    parts.push('', '■ 유관부서 시생산 참석', attList.join(', '));
+  }
   if (r.xp) {
     parts.push('', '■ 수출 정보',
       line('국가/지역', r.xp.countries),
@@ -2999,6 +3212,7 @@ function duplicateItem(id) {
     const el = document.getElementById('c-'+c);
     if (el) el.checked = !!src['chk_'+c];
   });
+  syncCheckItemHighlights();
   // Don't carry over attached files on duplicate — each new request needs fresh docs
   resetDocs();
   if (src.xp) {
@@ -3020,14 +3234,16 @@ function duplicateItem(id) {
 
 // ==================== Export ====================
 function exportCSV() {
-  const headers = ['요청일','문서번호','긴급도','상태','시생산범위','시생산예정일','시생산완료일','시생산상태','고객사','브랜드','품목코드','제품명','수량','영업담당','생산라인','CAPA','첨부 파일','최근 업데이트','메모'];
+  const headers = ['요청일','문서번호','긴급도','위험도','신규성','유관부서참석','상태','시생산범위','시생산예정일','시생산완료일','시생산상태','고객사','브랜드','품목코드','제품명','수량','영업담당','생산라인','CAPA','첨부 파일','최근 업데이트','메모'];
   const rows = requests.map(r=>{
     const latest = latestUpdate(r);
     const latestText = latest ? `${latest.date} [${latest.stage}] ${latest.note}` : '';
     const docList = DOC_KINDS
       .map(k => { const d = safeDocData(r['doc_'+k]); return d ? `${DOC_LABELS[k]}: ${d.name}` : null; })
       .filter(Boolean).join(' | ');
-    return [r.reqdate,r.docno,urgencyLabel(r.urgency),statusLabel(r.status),r.scope||'',r.pilotdate||'',r.pilotdone||'',r.pilotstatus||'',r.client,r.brand,r.fgcode,r.product,r.qty,r.sales,r.line,r.capa,docList,latestText,(r.memo||'').replace(/[\r\n,]/g,' ')];
+    const novText = NOVELTY_ITEMS.filter(it => r['chk_'+it.key]).map(it => it.label).join(' / ');
+    const attText = ATTEND_ITEMS.filter(it => r['chk_'+it.key]).map(it => `${it.label}${r[it.name] ? '(' + r[it.name] + ')' : ''}`).join(' / ');
+    return [r.reqdate,r.docno,urgencyLabel(r.urgency),riskLabel(r.risk),novText,attText,statusLabel(r.status),r.scope||'',r.pilotdate||'',r.pilotdone||'',r.pilotstatus||'',r.client,r.brand,r.fgcode,r.product,r.qty,r.sales,r.line,r.capa,docList,latestText,(r.memo||'').replace(/[\r\n,]/g,' ')];
   });
   const csv = '﻿' + [headers, ...rows].map(row=>row.map(c=>`"${(c||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
@@ -3112,6 +3328,9 @@ function sanitizeImportRecord(r) {
   // sectionMeta (relay-writing audit, nested)
   const sm = sanitizeSectionMeta(r.sectionMeta);
   if (sm) clean.sectionMeta = sm;
+  // 변경 이력 (history): 정제 후 최근 100건 유지
+  const hist = Array.isArray(r.history) ? r.history.map(sanitizeHistory).filter(Boolean).slice(-100) : [];
+  if (hist.length) clean.history = hist;
   return clean;
 }
 
@@ -3288,6 +3507,12 @@ function seedDummyData() {
       newtech: '자정 성분 신규 도입', pconcern: '신규 원료 용해도 이슈 가능성', fconcern: '', scaleup: '양산 시 분산 안정성 모니터링 필수',
       status: 'progress', pilotstatus: '예정', richeck: '진행중', pdcheck: '대기', memo: '연구소 검토 중 - 안정성 데이터 대기',
       sig1: '이영업', sig2: '최연구', sig3: '', sig4: '',
+      risk: '높음',
+      chk_newform: true, newform_note: '신규 자정 성분 기반 나이트 크림 제형',
+      chk_newmaterial: true, newmaterial_note: '자정 성분 5% 신규 도입 (MSDS/COA 확보 필요)',
+      chk_newfill: false, newfill_note: '', chk_newetc: false, newetc_note: '',
+      chk_att_ri: true, att_ri_name: '최연구', chk_att_qa: true, att_qa_name: '정품질',
+      chk_att_sales: true, att_sales_name: '이영업', chk_att_prod: false, att_prod_name: '',
       chk_bom: true, chk_msds: true, chk_coa: true, chk_drawing: false, chk_limit: true, chk_prior: false,
       updates: [
         { date: dAgo(2), author: '최연구 / 연구소', stage: '연구 검토', note: '처방 레시피 검토 완료. 신규 자정 성분 용해도 추가 테스트 진행 예정. 다음 주 벌크 제조 스케줄 확정.' }
@@ -3325,6 +3550,13 @@ function seedDummyData() {
       scaleup: '펩타이드 온도 관리 양산 라인 사양 확인 필수',
       status: 'issue', pilotstatus: '진행중', richeck: '완료', pdcheck: '진행중', memo: '대체 원료 점도 이슈로 일정 3일 지연. 펩타이드 재공급 대응 중.',
       sig1: '박영업', sig2: '김연구', sig3: '오공정', sig4: '',
+      risk: '매우높음',
+      chk_newform: false, newform_note: '',
+      chk_newmaterial: true, newmaterial_note: '펩타이드 캡슐 원료 + 신규 호박색 용기 (홀더 신규 제작)',
+      chk_newfill: true, newfill_note: '기포 방지 저속 충진 + 탈기 공정 신규 적용',
+      chk_newetc: false, newetc_note: '',
+      chk_att_ri: true, att_ri_name: '김연구', chk_att_qa: true, att_qa_name: '이품질',
+      chk_att_sales: true, att_sales_name: '박영업', chk_att_prod: true, att_prod_name: '오공정 / 강생산',
       chk_bom: true, chk_msds: true, chk_coa: true, chk_drawing: true, chk_limit: true, chk_prior: true,
       updates: [
         { date: dAgo(15), author: '김연구 / 연구소', stage: '연구 검토', note: '신규 펩타이드 안정성 검증 완료. 공정개발팀 이관.' },
@@ -3393,6 +3625,12 @@ function seedDummyData() {
       limit: '', function: '', newtech: '비타민C 안정화 신규 기술 적용', pconcern: '광안정성 검증 필수', fconcern: '', scaleup: '',
       status: 'pending', pilotstatus: '예정', richeck: '대기', pdcheck: '대기', memo: '긴급 요청 - 마케팅 사전 협의 필요',
       sig1: '윤영업', sig2: '', sig3: '', sig4: '',
+      risk: '높음',
+      chk_newform: true, newform_note: '비타민C 10% 고함량 에센스 신규 제형',
+      chk_newmaterial: true, newmaterial_note: '호박색 차광 용기 신규 (홀더 신규 제작)',
+      chk_newfill: false, newfill_note: '', chk_newetc: false, newetc_note: '',
+      chk_att_ri: false, att_ri_name: '', chk_att_qa: false, att_qa_name: '',
+      chk_att_sales: true, att_sales_name: '윤영업', chk_att_prod: false, att_prod_name: '',
       chk_bom: true, chk_msds: false, chk_coa: false, chk_drawing: true, chk_limit: false, chk_prior: true,
       updates: [],
       photo_container: null, photo_coding: null, photo_etc: null, photo_limit: null
