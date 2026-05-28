@@ -67,6 +67,7 @@
 
   /* Stat Cards — flat with thin top accent */
   .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stats.stats-cols-4 { grid-template-columns: repeat(4, 1fr); }
   .stat-card { background: var(--bg-surface); padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); border-top: 2px solid var(--accent); transition: border-color .15s, box-shadow .15s; }
   .stat-card.total { border-top-color: #475569; }
   .stat-card.pending { border-top-color: #94a3b8; }
@@ -150,6 +151,14 @@
   .check-item textarea, .check-item input[type="text"] { width: 100%; }
   .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   @media (max-width: 720px) { .check-grid { grid-template-columns: 1fr; } }
+
+  /* 변경 이력 필드 단위 diff */
+  .hist-changes { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+  .hist-chg { display: flex; align-items: baseline; gap: 6px; font-size: 11px; flex-wrap: wrap; }
+  .hist-chg-label { min-width: 96px; font-weight: 600; color: var(--text-secondary); }
+  .hist-chg-from { color: #9ca3af; text-decoration: line-through; }
+  .hist-chg-arrow { color: #94a3b8; }
+  .hist-chg-to { color: #047857; font-weight: 600; }
 
   /* Modal — clean white with subtle shadow */
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(17,24,39,0.5); z-index: 1000; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 20px; }
@@ -329,10 +338,10 @@
 
   /* Mobile responsive */
   @media (max-width: 900px) {
-    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stats, .stats.stats-cols-4 { grid-template-columns: repeat(2, 1fr); }
     .form-grid, .form-grid.col-3, .form-grid.col-4 { grid-template-columns: 1fr; }
     .flow { grid-template-columns: 1fr; }
-    .table-wrap { overflow-x: auto; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   }
   @media (max-width: 768px) {
     .header { padding: 14px 16px; }
@@ -364,7 +373,10 @@
     }
     #tab-list .table-wrap td:not([data-label])::before { content: ''; min-width: 0; }
     .toolbar { padding: 10px; }
-    .toolbar input[type="text"] { min-width: 140px; }
+    .toolbar input[type="text"]:not(#filter-dept) { min-width: 140px; flex: 1 1 100%; }
+    .toolbar select, .toolbar #filter-dept { flex: 1 1 45%; min-width: 0; max-width: none; }
+    .must-check-bar { gap: 6px; }
+    .must-check-bar .mc-title { flex: 1 1 100%; }
     .modal { max-width: 100%; max-height: 96vh; border-radius: 8px; }
     .modal-body { padding: 14px; }
     .modal-footer { padding: 12px; flex-wrap: wrap; }
@@ -474,7 +486,7 @@
     </div>
     <div id="reviewer-queue" class="reviewer-only" style="display:none; margin-bottom:18px;">
       <h3 style="margin: 0 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">🛠 공정개발 검토 큐</h3>
-      <div class="stats" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="stats stats-cols-4">
         <div class="stat-card progress" style="cursor:pointer;" onclick="jumpToReviewerQueue('all')">
           <div class="label">내 검토 대기</div>
           <div class="value" id="rq-waiting">0</div>
@@ -482,6 +494,10 @@
         <div class="stat-card issue" style="cursor:pointer;" onclick="jumpToReviewerQueue('urgent')">
           <div class="label">긴급 중 대기</div>
           <div class="value" id="rq-urgent">0</div>
+        </div>
+        <div class="stat-card risk" style="cursor:pointer;" onclick="jumpToReviewerQueue('highrisk')">
+          <div class="label">고위험 · PD 미완</div>
+          <div class="value" id="rq-highrisk">0</div>
         </div>
         <div class="stat-card pending" style="cursor:pointer;" onclick="jumpToReviewerQueue('thisweek')">
           <div class="label">이번 주 시생산 · PD 미완</div>
@@ -530,6 +546,13 @@
         <option value="normal">일반</option>
         <option value="urgent">긴급</option>
         <option value="critical">최우선</option>
+      </select>
+      <select id="filter-risk" onchange="renderList()" title="위험도 필터">
+        <option value="">전체 위험도</option>
+        <option value="낮음">낮음</option>
+        <option value="보통">보통</option>
+        <option value="높음">높음</option>
+        <option value="매우높음">매우 높음</option>
       </select>
       <input type="text" id="filter-dept" placeholder="부서 검색" oninput="onSearchInput()" style="max-width:140px;">
       <select id="sort-list" onchange="renderList()" title="정렬 기준">
@@ -747,7 +770,8 @@
               <select id="f-material"><option value="">선택</option><option>입고 완료</option><option>대기</option><option>대체품 사용</option></select>
             </div>
             <div class="form-row"><label>신규 원료 사용</label>
-              <select id="f-newmat"><option value="N">N</option><option value="Y">Y (MSDS 필수)</option></select>
+              <select id="f-newmat" onchange="onNewmatChange()"><option value="N">N</option><option value="Y">Y (MSDS 필수)</option></select>
+              <div class="hint" style="margin-top:4px; font-size:11px; color:#94a3b8;">Y 선택 시 품질/리스크 탭의 「신규 자재」가 자동 체크됩니다.</div>
             </div>
           </div>
         </div>
@@ -864,13 +888,14 @@
           <div class="hint-info">💡 신규 요소가 있으면 해당 항목을 체크하고 내용을 입력하세요. 신규성이 많을수록 위험도를 높게 평가합니다.</div>
           <div class="form-grid">
             <div class="form-row"><label>위험도</label>
-              <select id="f-risk">
+              <select id="f-risk" onchange="markRiskTouched()">
                 <option value="">선택</option>
                 <option value="낮음">낮음</option>
                 <option value="보통">보통</option>
                 <option value="높음">높음</option>
                 <option value="매우높음">매우 높음</option>
               </select>
+              <div id="risk-suggest-hint" style="margin-top:6px; font-size:11px; color:#2563eb;"></div>
             </div>
           </div>
           <div class="check-grid" style="margin-top:10px;">
@@ -1226,6 +1251,7 @@
     <div class="modal-body" id="detail-body"></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="document.getElementById('detail-modal').classList.remove('active')">닫기</button>
+      <button class="btn btn-outline" id="detail-print" title="요청서를 인쇄용 양식으로 출력 (PDF 저장 가능)">🖨 인쇄</button>
       <button class="btn btn-outline" id="detail-copy" title="주요 항목을 텍스트로 클립보드에 복사">📋 텍스트 복사</button>
       <button class="btn btn-outline write-only" id="detail-duplicate" title="이 요청서를 템플릿으로 신규 생성">📑 복제</button>
       <button class="btn btn-primary write-only" id="detail-quick">⚡ 빠른 업데이트</button>
@@ -1641,9 +1667,12 @@ function renderReviewerQueue() {
     const d = new Date(r.pilotdate);
     return !isNaN(d) && d <= weekEnd;
   });
+  const highRiskList = waitingList.filter(r => r.risk === '높음' || r.risk === '매우높음');
   document.getElementById('rq-waiting').textContent = waitingList.length;
   document.getElementById('rq-urgent').textContent = urgentList.length;
   document.getElementById('rq-thisweek').textContent = thisweekList.length;
+  const hrEl = document.getElementById('rq-highrisk');
+  if (hrEl) hrEl.textContent = highRiskList.length;
 }
 
 function jumpToReviewerQueue(kind) {
@@ -1699,10 +1728,51 @@ function riskLabel(r) { return r === '매우높음' ? '매우 높음' : (r || ''
 function onNoveltyToggle(el, key) {
   const wrap = document.getElementById('chkitem-' + key);
   if (wrap) wrap.classList.toggle('checked', el.checked);
+  // D: 품질탭 신규 자재 체크 → 벌크탭 신규 원료(Y) 동기화
+  if (key === 'newmaterial' && el.checked) {
+    const nm = document.getElementById('f-newmat');
+    if (nm && nm.value !== 'Y') nm.value = 'Y';
+  }
+  suggestRisk();
 }
 function onAttendToggle(el, key) {
   const wrap = document.getElementById('chkitem-' + key);
   if (wrap) wrap.classList.toggle('checked', el.checked);
+}
+// D: 벌크탭 신규 원료(Y) → 품질탭 신규 자재 체크 동기화
+function onNewmatChange() {
+  const nm = document.getElementById('f-newmat');
+  if (nm && nm.value === 'Y') {
+    const c = document.getElementById('c-newmaterial');
+    if (c && !c.checked) { c.checked = true; onNoveltyToggle(c, 'newmaterial'); }
+  }
+}
+
+// A: 위험도 자동 추천 — 신규성 체크 개수 기반. 사용자가 직접 고르면(riskTouched) 더 이상 덮어쓰지 않음.
+let riskTouched = false;
+function noveltyCount() {
+  return NOVELTY_ITEMS.reduce((n, it) => { const c = document.getElementById('c-'+it.key); return n + (c && c.checked ? 1 : 0); }, 0);
+}
+function recommendedRisk(count) {
+  if (count >= 3) return '매우높음';
+  if (count === 2) return '높음';
+  if (count === 1) return '보통';
+  return '';
+}
+function markRiskTouched() { riskTouched = true; updateRiskHint(); }
+function updateRiskHint() {
+  const hint = document.getElementById('risk-suggest-hint');
+  if (!hint) return;
+  const rec = recommendedRisk(noveltyCount());
+  hint.textContent = rec ? `💡 신규성 ${noveltyCount()}건 기준 권장 위험도: ${riskLabel(rec)}` : '';
+}
+function suggestRisk() {
+  const sel = document.getElementById('f-risk');
+  if (!sel) return;
+  const rec = recommendedRisk(noveltyCount());
+  // 사용자가 직접 고르지 않았다면 권장값으로 자동 채움(신규성 증가 시 상향)
+  if (!riskTouched && rec) sel.value = rec;
+  updateRiskHint();
 }
 // 폼 로드 시 체크 상태를 카드 강조에 반영
 function syncCheckItemHighlights() {
@@ -1817,6 +1887,8 @@ function resetListFilters() {
   document.getElementById('search').value = '';
   document.getElementById('filter-status').selectedIndex = 0;
   document.getElementById('filter-urgency').selectedIndex = 0;
+  const frEl = document.getElementById('filter-risk');
+  if (frEl) frEl.selectedIndex = 0;
   document.getElementById('filter-dept').value = '';
   const sortSel = document.getElementById('sort-list');
   if (sortSel) sortSel.selectedIndex = 0;
@@ -1858,6 +1930,8 @@ function renderList() {
   const q = document.getElementById('search').value.toLowerCase();
   const fs = document.getElementById('filter-status').value;
   const fu = document.getElementById('filter-urgency').value;
+  const frEl = document.getElementById('filter-risk');
+  const fr = frEl ? frEl.value : '';
   const fd = document.getElementById('filter-dept').value.trim().toLowerCase();
 
   // 대시보드/검토 큐 임시 필터 안내 줄
@@ -1874,10 +1948,13 @@ function renderList() {
   let list = requests.filter(r=>{
     if (fs && r.status!==fs) return false;
     if (fu && r.urgency!==fu) return false;
+    if (fr && r.risk!==fr) return false;
     if (fd && !(r.dept||'').toLowerCase().includes(fd)) return false;
     if (q) {
+      const noveltyText = NOVELTY_ITEMS.filter(it => r['chk_'+it.key]).map(it => it.label + ' ' + (r[it.note]||'')).join(' ');
       const s = [r.fgcode,r.product,r.client,r.sales,r.brand,r.project,r.docno,
-                 r.ri,r.qa,r.pd,r.prod,r.dept,r.bulkcode,r.formula,r.line,r.batch].join(' ').toLowerCase();
+                 r.ri,r.qa,r.pd,r.prod,r.dept,r.bulkcode,r.formula,r.line,r.batch,
+                 riskLabel(r.risk), noveltyText].join(' ').toLowerCase();
       if (!s.includes(q)) return false;
     }
     // Dashboard "필수 확인 사항" narrowing (set by jumpToDashFilter)
@@ -1886,6 +1963,7 @@ function renderList() {
     if (reviewerQueueFilter) {
       if ((r.pdcheck || '대기') === '완료' || r.status === 'done') return false;
       if (reviewerQueueFilter === 'urgent' && !(r.urgency === 'urgent' || r.urgency === 'critical')) return false;
+      if (reviewerQueueFilter === 'highrisk' && !(r.risk === '높음' || r.risk === '매우높음')) return false;
       if (reviewerQueueFilter === 'thisweek') {
         if (!r.pilotdate) return false;
         const d = new Date(r.pilotdate);
@@ -2167,6 +2245,56 @@ const SECTION_CHECKS = {
 };
 const SECTION_LABEL = { basic:'기본 정보', product:'제품 정보', bulk:'벌크 제조', filling:'충진/포장', quality:'품질/리스크', approval:'승인/진행', xp:'수출 정보' };
 
+// H: 변경 이력 필드 단위 — 사람이 읽을 라벨
+const FIELD_LABELS = {
+  docno:'문서번호', rev:'개정번호', reqdate:'요청일', urgency:'긴급도', scope:'진행 범위',
+  client:'고객사', brand:'브랜드', project:'프로젝트명', dept:'부서', sales:'영업담당', ri:'연구담당',
+  qa:'품질담당', pd:'공정개발담당', prod:'생산담당', request:'요청사항', purpose:'목적/사유', cost:'비용 부담',
+  fgcode:'완제품 코드', product:'제품명', qty:'시생산 수량', batch:'배치번호', launch:'발매 예정일',
+  launchqty:'발매 예정 수량', sampledate:'샘플 발송일', sampleto:'샘플 전달처', pilotdate:'시생산 예정일', pilotdone:'시생산 완료일',
+  bulkcode:'벌크 코드', formula:'처방번호', batchsize:'배치 사이즈', material:'원료 수급', newmat:'신규 원료', equipment:'제조 장비', caution:'주의사항',
+  sg_cond:'비중 조건', sg_now:'비중(즉시)', sg_next:'비중(익일)', visc_cond:'점도 조건', visc_now:'점도(즉시)', visc_next:'점도(익일)',
+  hard_cond:'경도 조건', hard_now:'경도(즉시)', hard_next:'경도(익일)', bph_cond:'pH 조건', bph_now:'pH(즉시)', bph_next:'pH(익일)',
+  appr_cond:'외관 조건', appr_now:'외관(즉시)', appr_next:'외관(익일)',
+  fillwt:'충진량', filltol:'충진 허용오차', filltemp:'충진 온도', labelvol:'표시 용량', melttemp:'용해 온도', fillnote:'충진 특이사항',
+  line:'생산라인', lineKey:'생산라인(선택)', capa:'생산 CAPA', capaOk:'CAPA 확인', filltype:'충진 방식', fillspeed:'충진 속도', nozzle:'노즐 사이즈', firstart:'초물 검사',
+  container:'용기 재질', volume:'용기 용량', torque:'캡 토크', holder:'홀더/몰드', tunnel:'수축 터널',
+  limit:'한도견본 유무', function:'기능 검사', newtech:'신기술', pconcern:'제조 우려', fconcern:'충진 우려', scaleup:'양산 이관',
+  risk:'위험도', newform_note:'신규 제형 내용', newmaterial_note:'신규 자재 내용', newfill_note:'신규 충진/포장 내용', newetc_note:'기타 신규 내용',
+  status:'상태', pilotstatus:'시생산 상태', richeck:'연구소 검토', pdcheck:'공정개발 확인', memo:'메모',
+  sig1:'의뢰 서명', sig2:'검토 서명', sig3:'접수 서명', sig4:'최종 승인',
+  att_ri_name:'연구소 참석자', att_qa_name:'품질 참석자', att_sales_name:'영업 참석자', att_prod_name:'생산·공정개발 참석자',
+};
+const CHECK_LABELS = {
+  bom:'BOM 첨부', msds:'MSDS 첨부', coa:'COA 첨부', drawing:'부자재 도면', limit:'한도견본 첨부', prior:'이전 테스트 결과',
+  newform:'신규 제형', newmaterial:'신규 자재', newfill:'신규 충진/포장', newetc:'기타 신규',
+  att_ri:'연구소 참석', att_qa:'품질 참석', att_sales:'영업 참석', att_prod:'생산·공정개발 참석',
+};
+// 값 사람친화 표기 (코드값 → 라벨)
+function fmtFieldValue(key, v) {
+  if (v == null || v === '') return '(없음)';
+  if (key === 'urgency') return urgencyLabel(v);
+  if (key === 'status') return statusLabel(v);
+  if (key === 'risk') return riskLabel(v);
+  const s = String(v);
+  return s.length > 80 ? s.slice(0, 80) + '…' : s;
+}
+// 두 레코드 간 필드/체크 단위 변경 목록 (최대 60건)
+function fieldChanges(oldRec, newRec) {
+  const out = [];
+  FIELDS.forEach(f => {
+    const a = oldRec?.[f] ?? '', b = newRec[f] ?? '';
+    if (a !== b) out.push({ label: FIELD_LABELS[f] || f, from: fmtFieldValue(f, a), to: fmtFieldValue(f, b) });
+  });
+  CHECKS.forEach(c => {
+    const a = !!(oldRec?.['chk_'+c]), b = !!newRec['chk_'+c];
+    if (a !== b) out.push({ label: CHECK_LABELS[c] || c, from: a ? '체크' : '해제', to: b ? '체크' : '해제' });
+  });
+  const oldXp = oldRec?.xp || null, newXp = newRec.xp || null;
+  if (JSON.stringify(oldXp) !== JSON.stringify(newXp)) out.push({ label: '수출 정보', from: oldXp ? '입력' : '(없음)', to: newXp ? '입력' : '(없음)' });
+  return out.slice(0, 60);
+}
+
 function diffSection(section, oldRec, newRec) {
   const fields = SECTION_FIELDS[section] || [];
   for (const f of fields) {
@@ -2234,11 +2362,11 @@ function appendHistory(oldRec, newRec) {
   const editor = authorTag() || (hasProfile() ? (profile.email || deptLabel(profile.role, profile.dept)) : '') || '-';
   const at = new Date().toISOString();
   if (!oldRec) {
-    hist.push({ at, editor, action: '생성', rev: newRec.rev || '', sections: [] });
+    hist.push({ at, editor, action: '생성', rev: newRec.rev || '', sections: [], changes: [] });
   } else {
     const secs = changedSections(oldRec, newRec);
     if (secs.length === 0) return hist;
-    hist.push({ at, editor, action: '수정', rev: newRec.rev || '', sections: secs });
+    hist.push({ at, editor, action: '수정', rev: newRec.rev || '', sections: secs, changes: fieldChanges(oldRec, newRec) });
   }
   return hist.slice(-100); // 저장 한계 보호: 최근 100건 유지
 }
@@ -2253,7 +2381,14 @@ function sanitizeHistory(h) {
   const sections = Array.isArray(h.sections)
     ? h.sections.filter(s => typeof s === 'string').map(s => s.slice(0, 40)).slice(0, 30)
     : [];
-  return { at, editor, action, rev, sections };
+  const changes = Array.isArray(h.changes)
+    ? h.changes.filter(c => c && typeof c === 'object').slice(0, 60).map(c => ({
+        label: typeof c.label === 'string' ? c.label.slice(0, 40) : '',
+        from: typeof c.from === 'string' ? c.from.slice(0, 100) : '',
+        to: typeof c.to === 'string' ? c.to.slice(0, 100) : '',
+      }))
+    : [];
+  return { at, editor, action, rev, sections, changes };
 }
 
 function fmtDateTime(iso) {
@@ -2268,13 +2403,18 @@ function renderHistory(hist) {
   const rows = list.slice().reverse().map(h => {
     const secs = (h.sections && h.sections.length) ? h.sections.join(', ') : (h.action === '생성' ? '신규 작성' : '-');
     const actCls = h.action === '생성' ? 'b-done' : 'b-progress';
+    const changes = Array.isArray(h.changes) ? h.changes : [];
+    const changeHtml = changes.length ? `<div class="hist-changes">${changes.map(c =>
+      `<div class="hist-chg"><span class="hist-chg-label">${esc(c.label)}</span><span class="hist-chg-from">${esc(c.from)}</span><span class="hist-chg-arrow">→</span><span class="hist-chg-to">${esc(c.to)}</span></div>`
+    ).join('')}</div>` : '';
     return `<div class="update-item">
       <div class="update-head"><div class="update-meta">
         <span class="update-date">${esc(fmtDateTime(h.at))}</span>
         <span class="badge ${actCls}" style="font-size:10px">${esc(h.action || '수정')}${h.rev ? ' · ' + esc(h.rev) : ''}</span>
         <span>✍ ${esc(h.editor || '-')}</span>
       </div></div>
-      <div class="update-note">변경 항목: ${esc(secs)}</div>
+      <div class="update-note">변경 섹션: ${esc(secs)}</div>
+      ${changeHtml}
     </div>`;
   }).join('');
   return `<div class="section"><div class="section-title">🕘 변경 이력 (${list.length}건)</div>${rows}</div>`;
@@ -2315,7 +2455,9 @@ function openForm() {
   document.getElementById('form-title').textContent = '＋ 신규 시생산 요청서 작성';
   document.getElementById('btn-delete').style.display = 'none';
   clearForm();
+  riskTouched = false;
   syncCheckItemHighlights();
+  updateRiskHint();
   resetPhotos();
   resetDocs();
   toggleLimitAttach();
@@ -2415,6 +2557,9 @@ function editItem(id) {
     if (el) el.checked = !!r['chk_'+c];
   });
   syncCheckItemHighlights();
+  // 기존 위험도가 있으면 작성자가 정한 값으로 보고 자동 추천이 덮어쓰지 않게 함
+  riskTouched = !!(r.risk);
+  updateRiskHint();
   writeExportToForm(r.xp || null);
   updateExportSectionVisibility(!!r.xp);
   resetPhotos();
@@ -2481,7 +2626,19 @@ function saveForm() {
   if (launch && pilotdone && launch < pilotdone) {
     warnings.push(`발매 예정일(${launch})이 시생산 완료일(${pilotdone})보다 빠릅니다.`);
   }
-  if (warnings.length && !confirm('⚠ 날짜 순서 확인이 필요합니다:\n\n- ' + warnings.join('\n- ') + '\n\n그래도 저장하시겠습니까?')) {
+  // 신규성·위험도·첨부 규칙 경고 (B/F)
+  const noveltyChecked = NOVELTY_ITEMS.some(it => { const c = document.getElementById('c-'+it.key); return c && c.checked; });
+  const riskVal = (document.getElementById('f-risk') || {}).value || '';
+  if (noveltyChecked && !riskVal) {
+    warnings.push('신규성(신규 제형/자재/충진·포장)이 체크되어 있으나 위험도가 미입력입니다. 위험도를 선택하세요.');
+  }
+  const newmatY = ((document.getElementById('f-newmat') || {}).value === 'Y');
+  const newMaterialChecked = (() => { const c = document.getElementById('c-newmaterial'); return c && c.checked; })();
+  const msdsAttached = (() => { const c = document.getElementById('c-msds'); return c && c.checked; })();
+  if ((newmatY || newMaterialChecked) && !msdsAttached) {
+    warnings.push('신규 원료/자재 사용 건은 MSDS(물질안전보건자료) 첨부가 필요합니다 — 품질/리스크 탭의 첨부문서를 확인하세요.');
+  }
+  if (warnings.length && !confirm('⚠ 저장 전 확인이 필요합니다:\n\n- ' + warnings.join('\n- ') + '\n\n그래도 저장하시겠습니까?')) {
     return;
   }
   const data = { id: editingId || genId() };
@@ -3176,7 +3333,86 @@ function viewDetail(id) {
   document.getElementById('detail-copy').onclick = ()=>{
     copyRequestToClipboard(id);
   };
+  document.getElementById('detail-print').onclick = ()=>{
+    printRequest(id);
+  };
   document.getElementById('detail-modal').classList.add('active');
+}
+
+// G: 단일 요청서 인쇄/PDF 양식 — 새 창에 A4 레이아웃으로 출력
+function printRequest(id) {
+  const r = requests.find(x=>x.id===id);
+  if (!r) return;
+  const win = window.open('', '_blank');
+  if (!win) { alert('팝업 차단을 해제해주세요.'); return; }
+  const e = (v) => escapeHtml(v == null ? '' : String(v));
+  const tr = (k, v) => (v == null || v === '') ? '' : `<tr><th>${e(k)}</th><td>${e(v)}</td></tr>`;
+  const sectionTbl = (title, rowsHtml) => rowsHtml.trim() ? `<h3>${e(title)}</h3><table class="kv">${rowsHtml}</table>` : '';
+  const novList = NOVELTY_ITEMS.filter(it => r['chk_'+it.key])
+    .map(it => `<li><strong>${e(it.label)}</strong>${r[it.note] ? ' — ' + e(r[it.note]) : ''}</li>`).join('');
+  const attList = ATTEND_ITEMS.filter(it => r['chk_'+it.key])
+    .map(it => `${e(it.label)}${r[it.name] ? '(' + e(r[it.name]) + ')' : ''}`).join(', ');
+  const ups = (r.updates||[]).slice().sort((a,b)=>new Date(b.date||'')-new Date(a.date||''));
+  const upsHtml = ups.length ? '<h3>📝 진행사항 업데이트</h3>' + ups.map(u =>
+    `<div class="upd"><div class="upd-h"><strong>${e(u.date)}</strong> · ${e(u.stage)} · ✍ ${e(u.author)}</div><div>${e(u.note)}</div></div>`).join('') : '';
+  const hist = Array.isArray(r.history) ? r.history.slice().reverse() : [];
+  const histHtml = hist.length ? '<h3>🕘 변경 이력</h3><table class="kv"><tr><th>일시</th><th>구분</th><th>작성자</th><th>변경 항목</th></tr>' +
+    hist.map(h => `<tr><td>${e(fmtDateTime(h.at))}</td><td>${e(h.action||'수정')}${h.rev?(' '+e(h.rev)):''}</td><td>${e(h.editor||'-')}</td><td>${e((h.sections||[]).join(', ')||(h.action==='생성'?'신규 작성':'-'))}</td></tr>`).join('') + '</table>' : '';
+  const riskTxt = r.risk ? riskLabel(r.risk) : '';
+
+  const body = `
+    <h1>시생산 요청서</h1>
+    <div class="meta">문서번호 ${e(r.docno)} · ${e(r.rev||'Rev.0')} · 출력일 ${new Date().toLocaleString('ko-KR')}</div>
+    ${sectionTbl('📌 문서/요청 정보',
+      tr('요청일', r.reqdate) + tr('긴급도', urgencyLabel(r.urgency)) + tr('위험도', riskTxt) +
+      tr('진행 범위', r.scope) + tr('현재 상태', statusLabel(r.status)) +
+      tr('요청사항', r.request) + tr('목적/사유', r.purpose) + tr('비용 부담', r.cost))}
+    ${sectionTbl('👥 프로젝트',
+      tr('고객사', r.client) + tr('브랜드', r.brand) + tr('프로젝트명', r.project) + tr('부서', r.dept) +
+      tr('영업', r.sales) + tr('연구', r.ri) + tr('품질', r.qa) + tr('공정개발', r.pd) + tr('생산', r.prod))}
+    ${sectionTbl('📦 제품',
+      tr('완제품 코드', r.fgcode) + tr('제품명', r.product) + tr('수량', r.qty) + tr('배치번호', r.batch) +
+      tr('시생산 예정일', r.pilotdate) + tr('시생산 완료일', r.pilotdone) + tr('시생산 상태', r.pilotstatus) +
+      tr('발매 예정일', r.launch) + tr('발매 예정 수량', r.launchqty))}
+    ${sectionTbl('🧪 벌크 제조',
+      tr('벌크 코드', r.bulkcode) + tr('처방번호', r.formula) + tr('배치 사이즈', r.batchsize) +
+      tr('원료 수급', r.material) + tr('신규 원료', r.newmat) + tr('제조 장비', r.equipment) + tr('주의사항', r.caution))}
+    ${sectionTbl('🚰 충진/포장',
+      tr('충진량(g)', r.fillwt) + tr('허용오차', r.filltol) + tr('충진 온도', r.filltemp) +
+      tr('표시 용량', r.labelvol) + tr('용기', r.container) + tr('홀더/몰드', r.holder) + tr('특이사항', r.fillnote))}
+    <h3>🆕 신규성 / 위험도</h3>
+    <table class="kv">${tr('위험도', riskTxt)}</table>
+    ${novList ? `<ul class="nov">${novList}</ul>` : '<div class="muted">신규성 해당 없음</div>'}
+    ${sectionTbl('🎯 품질/리스크',
+      tr('한도견본', r.limit) + tr('기능 검사', r.function) + tr('신기술', r.newtech) +
+      tr('제조 우려', r.pconcern) + tr('충진 우려', r.fconcern) + tr('양산 이관', r.scaleup))}
+    <h3>🙋 유관부서 시생산 참석</h3>
+    <table class="kv"><tr><th>참석 부서</th><td>${attList || '미체크'}</td></tr></table>
+    ${sectionTbl('✍ 진행/승인',
+      tr('연구소 검토', r.richeck) + tr('공정개발 확인', r.pdcheck) + tr('메모', r.memo) +
+      tr('의뢰', r.sig1) + tr('검토', r.sig2) + tr('접수', r.sig3) + tr('최종 승인', r.sig4))}
+    ${upsHtml}
+    ${histHtml}
+  `;
+  win.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>시생산 요청서 ${e(r.docno)}</title>
+<style>
+  body { font-family: 'Malgun Gothic','맑은 고딕',sans-serif; padding: 24px; color: #1f2937; font-size: 12px; }
+  h1 { color: #1e3a5f; font-size: 20px; margin: 0 0 4px; }
+  .meta { color: #64748b; font-size: 11px; margin-bottom: 16px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; }
+  h3 { color: #1e3a5f; font-size: 13px; margin: 16px 0 6px; border-left: 3px solid #ff7f3f; padding-left: 8px; }
+  table.kv { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  table.kv th, table.kv td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; vertical-align: top; }
+  table.kv th { background: #f1f5f9; color: #1e3a5f; width: 130px; font-weight: 600; }
+  ul.nov { margin: 4px 0 8px; padding-left: 20px; }
+  ul.nov li { margin-bottom: 3px; }
+  .muted { color: #94a3b8; margin-bottom: 8px; }
+  .upd { border-left: 2px solid #cbd5e1; padding: 4px 10px; margin-bottom: 6px; }
+  .upd-h { color: #475569; font-size: 11px; margin-bottom: 2px; }
+  @media print { @page { margin: 14mm; size: A4; } body { padding: 0; } h3 { page-break-after: avoid; } .upd, tr { page-break-inside: avoid; } }
+</style></head><body>${body}
+<script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script>
+</body></html>`);
+  win.document.close();
 }
 
 function copyRequestToClipboard(id) {
@@ -3312,6 +3548,9 @@ function duplicateItem(id) {
     if (el) el.checked = !!src['chk_'+c];
   });
   syncCheckItemHighlights();
+  // 복제된 위험도를 보존(자동 추천이 덮어쓰지 않게)
+  riskTouched = !!(src.risk);
+  updateRiskHint();
   // Don't carry over attached files on duplicate — each new request needs fresh docs
   resetDocs();
   if (src.xp) {
