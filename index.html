@@ -801,7 +801,7 @@
             <div class="form-row"><label>처방번호</label><input type="text" id="f-formula" placeholder="예: F-2026-0125"></div>
             <div class="form-row"><label>배치 사이즈</label><input type="text" id="f-batchsize" placeholder="예: 500 kg"></div>
             <div class="form-row"><label>유형</label>
-              <select id="f-bulktype">
+              <select id="f-bulktype" onchange="onBulktypeChange()">
                 <option value="">선택</option>
                 <option>O/W 유화</option>
                 <option>W/O 유화</option>
@@ -815,6 +815,7 @@
                 <option>분말</option>
                 <option>기타</option>
               </select>
+              <input type="text" id="f-bulktype_other" placeholder="유형 직접 입력" style="display:none; margin-top:6px;">
             </div>
             <div class="form-row"><label>원료 수급 현황</label>
               <select id="f-material"><option value="">선택</option><option>입고 완료</option><option>대기</option><option>대체품 사용</option></select>
@@ -1758,6 +1759,21 @@ function onAttendToggle(el, key) {
   const wrap = document.getElementById('chkitem-' + key);
   if (wrap) wrap.classList.toggle('checked', el.checked);
 }
+// 유형 "기타" 선택 시 직접 입력 필드 토글
+function onBulktypeChange() {
+  const sel = document.getElementById('f-bulktype');
+  const inp = document.getElementById('f-bulktype_other');
+  if (!sel || !inp) return;
+  const show = sel.value === '기타';
+  inp.style.display = show ? '' : 'none';
+  if (!show) inp.value = '';
+}
+// 표시용 — 유형이 "기타"면 직접 입력값을 함께 보여줌
+function fmtBulkType(r) {
+  if (!r) return '';
+  if (r.bulktype === '기타' && r.bulktype_other) return '기타: ' + r.bulktype_other;
+  return r.bulktype || '';
+}
 // D: 벌크탭 신규 원료(Y) → 품질탭 신규 자재 체크 동기화
 function onNewmatChange() {
   const nm = document.getElementById('f-newmat');
@@ -2212,7 +2228,7 @@ function switchFormTab(name, el) {
 const FIELDS = ['docno','rev','reqdate','urgency','scope','client','brand','project','dept','sales','ri','qa','pd','prod',
   'request','purpose','cost','fgcode','product','qty','batch','launch','launchqty','sampledate','sampleto',
   'pilotdate','pilotdone',
-  'bulkcode','formula','batchsize','bulktype','bulkspec','material','newmat','equipment','caution',
+  'bulkcode','formula','batchsize','bulktype','bulktype_other','bulkspec','material','newmat','equipment','caution',
   'sg_cond','sg_now','sg_next','visc_cond','visc_now','visc_next','hard_cond','hard_now','hard_next',
   'bph_cond','bph_now','bph_next','appr_cond','appr_now','appr_next',
   'fillwt','filltol','filltemp','labelvol','melttemp','fillnote',
@@ -2246,7 +2262,7 @@ const SECTION_FIELDS = {
   basic: ['docno','rev','reqdate','urgency','scope','client','brand','project','dept','sales','ri','qa','pd','prod','request','purpose','cost',
     'risk','newform_note','newmaterial_note','newfill_note','newetc_note'],
   product: ['fgcode','product','qty','batch','pilotdate','pilotdone','launch','launchqty','sampledate','sampleto'],
-  bulk: ['bulkcode','formula','batchsize','bulktype','bulkspec','material','newmat','equipment','caution',
+  bulk: ['bulkcode','formula','batchsize','bulktype','bulktype_other','bulkspec','material','newmat','equipment','caution',
     'sg_cond','sg_now','sg_next','visc_cond','visc_now','visc_next','hard_cond','hard_now','hard_next',
     'bph_cond','bph_now','bph_next','appr_cond','appr_now','appr_next'],
   filling: ['fillwt','filltol','filltemp','labelvol','melttemp','fillnote',
@@ -2271,7 +2287,7 @@ const FIELD_LABELS = {
   qa:'품질담당', pd:'공정개발담당', prod:'생산담당', request:'요청사항', purpose:'목적/사유', cost:'비용 부담',
   fgcode:'완제품 코드', product:'제품명', qty:'시생산 수량', batch:'배치번호', launch:'발매 예정일',
   launchqty:'발매 예정 수량', sampledate:'샘플 발송일', sampleto:'샘플 전달처', pilotdate:'시생산 예정일', pilotdone:'시생산 완료일',
-  bulkcode:'벌크 코드', formula:'처방번호', batchsize:'배치 사이즈', bulktype:'유형', bulkspec:'스펙', material:'원료 수급', newmat:'신규 원료', equipment:'제조 장비', caution:'주의사항',
+  bulkcode:'벌크 코드', formula:'처방번호', batchsize:'배치 사이즈', bulktype:'유형', bulktype_other:'유형(기타 직접 입력)', bulkspec:'스펙', material:'원료 수급', newmat:'신규 원료', equipment:'제조 장비', caution:'주의사항',
   sg_cond:'비중 조건', sg_now:'비중(즉시)', sg_next:'비중(익일)', visc_cond:'점도 조건', visc_now:'점도(즉시)', visc_next:'점도(익일)',
   hard_cond:'경도 조건', hard_now:'경도(즉시)', hard_next:'경도(익일)', bph_cond:'pH 조건', bph_now:'pH(즉시)', bph_next:'pH(익일)',
   appr_cond:'외관 조건', appr_now:'외관(즉시)', appr_next:'외관(익일)',
@@ -2477,6 +2493,7 @@ function openForm() {
   riskTouched = false;
   syncCheckItemHighlights();
   updateRiskHint();
+  onBulktypeChange();
   resetPhotos();
   resetDocs();
   toggleLimitAttach();
@@ -2579,6 +2596,7 @@ function editItem(id) {
   // 기존 위험도가 있으면 작성자가 정한 값으로 보고 자동 추천이 덮어쓰지 않게 함
   riskTouched = !!(r.risk);
   updateRiskHint();
+  onBulktypeChange();
   writeExportToForm(r.xp || null);
   updateExportSectionVisibility(!!r.xp);
   resetPhotos();
@@ -3265,7 +3283,7 @@ function viewDetail(id) {
       <div class="section-title">🧪 벌크 제조</div>
       ${smStamp('bulk')}
       ${row('벌크 코드', r.bulkcode)}${row('처방번호', r.formula)}${row('배치 사이즈', r.batchsize)}
-      ${row('유형', r.bulktype)}${row('스펙', r.bulkspec)}
+      ${row('유형', fmtBulkType(r))}${row('스펙', r.bulkspec)}
       ${row('제조 장비', r.equipment)}${row('주의사항', r.caution)}
       ${bulkRow('비중', r.sg_cond, r.sg_now, r.sg_next)}
       ${bulkRow('점도 (cps)', r.visc_cond, r.visc_now, r.visc_next)}
@@ -3395,7 +3413,7 @@ function printRequest(id) {
       tr('발매 예정일', r.launch) + tr('발매 예정 수량', r.launchqty))}
     ${sectionTbl('🧪 벌크 제조',
       tr('벌크 코드', r.bulkcode) + tr('처방번호', r.formula) + tr('배치 사이즈', r.batchsize) +
-      tr('유형', r.bulktype) + tr('스펙', r.bulkspec) +
+      tr('유형', fmtBulkType(r)) + tr('스펙', r.bulkspec) +
       tr('원료 수급', r.material) + tr('신규 원료', r.newmat) + tr('제조 장비', r.equipment) + tr('주의사항', r.caution))}
     ${sectionTbl('🚰 충진/포장',
       tr('충진량(g)', r.fillwt) + tr('허용오차', r.filltol) + tr('충진 온도', r.filltemp) +
@@ -3473,7 +3491,7 @@ function copyRequestToClipboard(id) {
     '■ 벌크 / 충진',
     line('벌크 코드', r.bulkcode),
     line('처방번호', r.formula),
-    line('유형', r.bulktype),
+    line('유형', fmtBulkType(r)),
     line('스펙', r.bulkspec),
     line('배치 사이즈', r.batchsize),
     line('생산라인', r.line),
@@ -3573,6 +3591,7 @@ function duplicateItem(id) {
   // 복제된 위험도를 보존(자동 추천이 덮어쓰지 않게)
   riskTouched = !!(src.risk);
   updateRiskHint();
+  onBulktypeChange();
   // Don't carry over attached files on duplicate — each new request needs fresh docs
   resetDocs();
   if (src.xp) {
