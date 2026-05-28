@@ -680,7 +680,7 @@
         </div>
         <div class="section">
           <div class="section-title">🎯 시생산 범위</div>
-          <div class="hint-info">💡 선택 범위에서 제외되는 탭(벌크 제조 / 충진·포장)은 라벨에 "(제외)"가 붙고 흐리게 표시됩니다. 탭 클릭은 가능합니다.</div>
+          <div class="hint-info">💡 <strong>충진/포장만</strong> 선택 시 벌크 탭은 <strong>기본 처방 정보만 입력 가능</strong>하고 제조 공정·판정 기준은 제외됩니다. <strong>제조만</strong> 선택 시 충진/포장 탭이 제외(흐리게)됩니다.</div>
           <div class="form-grid">
             <div class="form-row"><label>진행 범위 <span class="req">*</span></label>
               <select id="f-scope" onchange="updateScopeTabs()">
@@ -809,6 +809,7 @@
             </div>
           </div>
         </div>
+        <div id="bulk-mfg">
         <div class="section">
           <div class="section-title">⚙ 제조 공정 파라미터</div>
           <div class="form-grid">
@@ -861,6 +862,7 @@
               </tr>
             </tbody>
           </table>
+        </div>
         </div>
       </div>
 
@@ -1789,19 +1791,18 @@ function updateScopeTabs() {
   tabs.forEach(t => {
     if (!t.dataset.origLabel) t.dataset.origLabel = t.textContent.replace(/\s*\(제외\)\s*$/, '').trim();
     const label = t.dataset.origLabel;
-    const isBulk = label.includes('벌크');
     const isFill = label.includes('충진');
-    const outOfScope =
-      (isBulk && scope === '충진/포장만') ||
-      (isFill && scope === '제조만');
+    // 벌크 탭은 충진/포장만이어도 "기본 처방 정보"는 입력 가능하므로 탭 자체는 제외 표시하지 않음
+    const outOfScope = (isFill && scope === '제조만');
     t.classList.toggle('dimmed', outOfScope);
     t.classList.toggle('scope-disabled', outOfScope);
     t.textContent = outOfScope ? (label + ' (제외)') : label;
   });
   // Disable inputs in out-of-scope sections
-  const bulk = document.getElementById('form-bulk');
+  // 충진/포장만: 벌크의 "제조 공정·판정"(#bulk-mfg)만 비활성화, 처방 정보는 입력 가능 유지
+  const bulkMfg = document.getElementById('bulk-mfg');
   const fill = document.getElementById('form-filling');
-  setSectionDisabled(bulk, scope === '충진/포장만', '벌크 제조');
+  setSectionDisabled(bulkMfg, scope === '충진/포장만', '벌크 제조 공정·판정');
   setSectionDisabled(fill, scope === '제조만', '충진/포장');
 }
 
