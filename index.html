@@ -574,6 +574,9 @@
         <option value="requested">시생산 요청됨</option>
         <option value="excluded">시생산 제외</option>
       </select>
+      <button class="btn btn-outline btn-sm" onclick="downloadNewProductTemplate()" title="신제품 일괄 등록용 엑셀(CSV) 양식 다운로드">📥 양식</button>
+      <button class="btn btn-outline btn-sm write-only" onclick="document.getElementById('np-import-file').click()" title="작성한 CSV 파일로 일괄 등록">📤 일괄 업로드</button>
+      <input type="file" id="np-import-file" accept=".csv,text/csv" style="display:none" onchange="handleNewProductImport(event)">
       <button class="btn btn-primary write-only" onclick="openNewProductForm()">＋ 신제품 추가</button>
     </div>
     <div class="stats stats-cols-4" id="np-week-stats" style="margin-bottom:14px;">
@@ -4791,6 +4794,194 @@ function renderNewProductList() {
       </td>
     </tr>`;
   }).join('');
+}
+
+// ===== CSV 양식 다운로드 / 업로드 =====
+const NP_CSV_HEADERS = ['주차','제품명','브랜드','고객사','카테고리','발매예정일','비고'];
+
+function downloadNewProductTemplate() {
+  const wk = currentWeekKey || isoWeekKey(new Date());
+  const examples = [
+    [wk, '예시: 루미아 토너 리뉴얼', '루미아', '한빛코스메틱', '스킨케어', '2026-07-15', '신규 제형 적용 검토'],
+    [wk, '예시: 오로라 매트 쿠션', '오로라', '미라쥬', '메이크업', '2026-08-01', ''],
+    [wk, '', '', '', '', '', '']
+  ];
+  const csvEscape = v => {
+    const s = String(v == null ? '' : v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+  };
+  const lines = [NP_CSV_HEADERS, ...examples].map(row => row.map(csvEscape).join(','));
+  // UTF-8 BOM + CRLF — Excel 호환
+  const csv = '﻿' + lines.join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  a.download = `INPMS_신제품양식_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showSnackbar('💾 양식 다운로드 — 엑셀에서 열어 작성 후 [📤 일괄 업로드]로 등록하세요.');
+}
+
+// RFC 4180 단순 파서 (한 줄 단위, quoted-comma / escaped quote 처리)
+function parseCsvLine(line) {
+  const out = [];
+  let i = 0, cur = '', inQuotes = false;
+  while (i < line.length) {
+    const c = line[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (line[i+1] === '"') { cur += '"'; i += 2; continue; }
+        inQuotes = false; i++; continue;
+      }
+      cur += c; i++;
+    } else {
+      if (c === ',') { out.push(cur); cur = ''; i++; continue; }
+      if (c === '"' && cur === '') { inQuotes = true; i++; continue; }
+      cur += c; i++;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+// 여러 줄에 걸친 따옴표 안 줄바꿈도 지원하는 CSV 분할기
+function splitCsvRows(text) {
+  const rows = [];
+  let cur = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (inQuotes && text[i+1] === '"') { cur += '""'; i++; continue; }
+      inQuotes = !inQuotes;
+      cur += c;
+      continue;
+    }
+    if (!inQuotes && (c === '\n' || c === '\r')) {
+      // CRLF 처리
+      if (c === '\r' && text[i+1] === '\n') i++;
+      if (cur.length > 0) { rows.push(cur); cur = ''; }
+      continue;
+    }
+    cur += c;
+  }
+  if (cur.length > 0) rows.push(cur);
+  return rows;
+}
+
+function normalizeWeekKey(s) {
+  s = String(s || '').trim();
+  if (/^\d{4}-W\d{2}$/.test(s)) return s;
+  // 2026-W2 형태 보정
+  const m1 = /^(\d{4})-W(\d{1,2})$/i.exec(s);
+  if (m1) return `${m1[1]}-W${String(+m1[2]).padStart(2,'0')}`;
+  return '';
+}
+function normalizeDate(s) {
+  s = String(s || '').trim();
+  if (!s) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  // 엑셀이 날짜를 "2026. 7. 15" 같이 저장할 때
+  const m2 = s.match(/^(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?$/);
+  if (m2) return `${m2[1]}-${m2[2].padStart(2,'0')}-${m2[3].padStart(2,'0')}`;
+  return '';
+}
+
+function handleNewProductImport(event) {
+  if (isRole(ROLE_VIEWER)) { alert('읽기 전용 권한입니다.'); event.target.value = ''; return; }
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      let text = String(e.target.result || '');
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // BOM 제거
+      const rows = splitCsvRows(text);
+      if (rows.length < 2) throw new Error('데이터 행이 없습니다. 헤더 + 1행 이상 필요합니다.');
+      const header = parseCsvLine(rows[0]).map(h => h.trim());
+      const idx = {};
+      NP_CSV_HEADERS.forEach(h => { idx[h] = header.indexOf(h); });
+      if (idx['제품명'] < 0) {
+        throw new Error('헤더에 "제품명" 컬럼이 필요합니다.\n[📥 양식] 버튼으로 다운로드한 양식을 사용하세요.');
+      }
+      const fallbackWeek = currentWeekKey || isoWeekKey(new Date());
+      const candidates = [];
+      let skippedEmpty = 0;
+      let weekFallback = 0;
+      for (let r = 1; r < rows.length; r++) {
+        const cols = parseCsvLine(rows[r]);
+        const get = (k) => (idx[k] >= 0 ? (cols[idx[k]] || '').trim() : '');
+        const productName = get('제품명');
+        // 예시 행 자동 스킵
+        if (!productName || /^예시[:：]/.test(productName)) { if (!productName) skippedEmpty++; continue; }
+        let weekKey = normalizeWeekKey(get('주차'));
+        if (!weekKey) { weekKey = fallbackWeek; weekFallback++; }
+        candidates.push({
+          id: genNpId(),
+          weekKey,
+          productName: productName.slice(0, 200),
+          brand: get('브랜드').slice(0, 120),
+          customer: get('고객사').slice(0, 120),
+          category: get('카테고리').slice(0, 80),
+          launchDate: normalizeDate(get('발매예정일')),
+          note: get('비고').slice(0, 2000),
+          inputBy: { name: profile.name || '', dept: profile.dept || '', role: profile.role || '' },
+          inputAt: new Date().toISOString(),
+          risk: { rnd: null, process: null, quality: null },
+          excluded: false,
+          excludedReason: '',
+          linkedRequestId: null
+        });
+      }
+      if (candidates.length === 0) {
+        throw new Error('유효한 행이 없습니다.\n· 제품명이 비어있지 않은지 확인\n· "예시:"로 시작하는 행은 자동 제외됩니다.');
+      }
+      // 중복(주차 + 제품명) 검사
+      const existingKey = new Set(newProducts.map(np => `${np.weekKey}::${np.productName}`));
+      const internalSeen = new Set();
+      const fresh = [];
+      let dupExisting = 0, dupInternal = 0;
+      candidates.forEach(c => {
+        const k = `${c.weekKey}::${c.productName}`;
+        if (existingKey.has(k)) { dupExisting++; return; }
+        if (internalSeen.has(k)) { dupInternal++; return; }
+        internalSeen.add(k);
+        fresh.push(c);
+      });
+      const lines = [];
+      lines.push(`📤 신제품 일괄 업로드`);
+      lines.push('');
+      lines.push(`• 등록될 행: ${fresh.length}건`);
+      if (skippedEmpty > 0) lines.push(`• 빈 행 제외: ${skippedEmpty}건`);
+      if (weekFallback > 0) lines.push(`• 주차 형식 오류 → 현재 주차(${fallbackWeek})로 보정: ${weekFallback}건`);
+      if (dupExisting > 0) lines.push(`⚠ 이미 등록된 항목(주차+제품명 중복): ${dupExisting}건 제외`);
+      if (dupInternal > 0) lines.push(`⚠ 파일 내 중복: ${dupInternal}건 제외`);
+      lines.push('');
+      lines.push(`첫 ${Math.min(5, fresh.length)}건 미리보기:`);
+      fresh.slice(0, 5).forEach((c, i) => {
+        lines.push(`  ${i+1}. [${c.weekKey}] ${c.productName}${c.brand?' · '+c.brand:''}${c.customer?' · '+c.customer:''}`);
+      });
+      lines.push('');
+      lines.push('계속하시겠습니까?');
+      if (!confirm(lines.join('\n'))) { event.target.value = ''; return; }
+      if (fresh.length === 0) { event.target.value = ''; showSnackbar('등록할 신규 항목이 없습니다.'); return; }
+      newProducts = newProducts.concat(fresh);
+      if (!saveNewProducts()) { event.target.value = ''; return; }
+      // 첫 번째 신규 항목의 주차로 이동해 보여주기
+      currentWeekKey = fresh[0].weekKey;
+      renderCurrent();
+      showSnackbar(`✓ 신제품 ${fresh.length}건 일괄 등록 완료${dupExisting+dupInternal>0?` (${dupExisting+dupInternal}건 중복 제외)`:''}`, null, 6000);
+    } catch (err) {
+      alert('업로드 실패: ' + err.message);
+    }
+    event.target.value = '';
+  };
+  reader.onerror = () => { alert('파일 읽기 실패'); event.target.value = ''; };
+  reader.readAsText(file, 'utf-8');
 }
 
 let editingNpId = null;
