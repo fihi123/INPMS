@@ -455,7 +455,9 @@
 
 <div class="tabs">
   <div class="tab active" onclick="switchTab('dashboard', this)">📊 대시보드</div>
-  <div class="tab" onclick="switchTab('list', this)">📋 요청 품목 리스트</div>
+  <div class="tab" onclick="switchTab('newproducts', this)">📦 신제품 리스트</div>
+  <div class="tab" onclick="switchTab('riskqueue', this)">🎯 위험도 평가 큐</div>
+  <div class="tab" onclick="switchTab('list', this)">📋 시생산 요청 리스트</div>
   <div class="tab" onclick="switchTab('weekly', this)">📅 주차별 업데이트</div>
   <div class="tab" onclick="switchTab('process', this)">🔄 프로세스 안내</div>
 </div>
@@ -483,6 +485,27 @@
       </div>
       <div class="bar"><div id="storage-usage-bar" class="bar-fill" style="width:0%;"></div></div>
       <div id="storage-usage-hint" style="margin-top:6px; color:#94a3b8; font-size:11px;">사진 첨부가 많으면 5MB 한계에 빠르게 도달할 수 있습니다.</div>
+    </div>
+    <div id="np-summary" style="margin-bottom:18px;">
+      <h3 style="margin: 0 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">📦 신제품 평가 현황 <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:6px;">신제품 리스트 → R&D → 공정·품질 → 시생산 요청서</span></h3>
+      <div class="stats stats-cols-4">
+        <div class="stat-card total" style="cursor:pointer;" onclick="goToNewProductsTab()" title="신제품 리스트 탭으로 이동">
+          <div class="label">전체 신제품</div>
+          <div class="value" id="dash-np-total">0</div>
+        </div>
+        <div class="stat-card progress" style="cursor:pointer;" onclick="goToRiskQueueTab()" title="위험도 평가 큐 탭으로 이동">
+          <div class="label">평가 대기 (R&D/공정/품질)</div>
+          <div class="value" id="dash-np-pending">0</div>
+        </div>
+        <div class="stat-card done" style="cursor:pointer;" onclick="goToNewProductsTab()" title="평가 완료 — 요청서 작성 대기">
+          <div class="label">평가 완료 · 요청서 대기</div>
+          <div class="value" id="dash-np-finalized">0</div>
+        </div>
+        <div class="stat-card risk" style="cursor:pointer;" onclick="goToRiskQueueTab()" title="잠정 최종 위험도 높음/심각">
+          <div class="label">잠정 고위험 (높음·심각)</div>
+          <div class="value" id="dash-np-highrisk">0</div>
+        </div>
+      </div>
     </div>
     <div id="reviewer-queue" class="reviewer-only" style="display:none; margin-bottom:18px;">
       <h3 style="margin: 0 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">🛠 공정개발 검토 큐</h3>
@@ -526,6 +549,87 @@
       <table>
         <thead><tr><th>요청일</th><th>긴급도</th><th>위험도</th><th>품목코드</th><th>제품명</th><th>수량</th><th>영업</th><th>상태</th><th>CAPA</th><th>최근 업데이트</th><th>액션</th></tr></thead>
         <tbody id="urgent-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- New Products (주차별 입력) -->
+  <div id="tab-newproducts" class="tab-content" style="display:none;">
+    <div class="banner">
+      <strong>📦 주차별 신제품 리스트</strong> — 매주 모든 신제품을 등록합니다. 등록 → 1차 R&D 평가 → 2차 공정·품질 평가(병렬) → 최종 위험도(자동 max) 확정 후 시생산 요청서 작성으로 이어집니다. <em>누구나 입력 가능</em>.
+    </div>
+    <div class="toolbar" id="np-toolbar">
+      <button class="btn btn-outline btn-sm" onclick="shiftNpWeek(-1)" title="이전 주">←</button>
+      <input type="week" id="np-week-input" onchange="onNpWeekChange()" style="font-family:inherit;">
+      <button class="btn btn-outline btn-sm" onclick="shiftNpWeek(1)" title="다음 주">→</button>
+      <button class="btn btn-outline btn-sm" onclick="setNpWeekToday()">이번 주</button>
+      <span id="np-week-label" style="font-size:12px;color:var(--text-muted);margin-left:4px;"></span>
+      <span style="flex:1;"></span>
+      <input type="text" id="np-search" placeholder="🔍 제품·브랜드·고객사 검색" oninput="renderNewProductList()" style="max-width:240px;">
+      <select id="np-filter-status" onchange="renderNewProductList()">
+        <option value="">전체 상태</option>
+        <option value="rnd_review">R&D 평가 대기</option>
+        <option value="pq_review">공정·품질 평가 대기</option>
+        <option value="finalized">평가 완료</option>
+        <option value="requested">시생산 요청됨</option>
+        <option value="excluded">시생산 제외</option>
+      </select>
+      <button class="btn btn-primary write-only" onclick="openNewProductForm()">＋ 신제품 추가</button>
+    </div>
+    <div class="stats stats-cols-4" id="np-week-stats" style="margin-bottom:14px;">
+      <div class="stat-card total"><div class="label">이번 주 등록</div><div class="value" id="np-stat-total">0</div></div>
+      <div class="stat-card progress"><div class="label">R&D 평가 대기</div><div class="value" id="np-stat-rnd">0</div></div>
+      <div class="stat-card pending"><div class="label">공정·품질 평가 대기</div><div class="value" id="np-stat-pq">0</div></div>
+      <div class="stat-card done"><div class="label">평가 완료</div><div class="value" id="np-stat-final">0</div></div>
+    </div>
+    <div class="table-wrap">
+      <table id="np-table">
+        <thead><tr>
+          <th>제품명</th>
+          <th>브랜드</th>
+          <th>고객사</th>
+          <th>카테고리</th>
+          <th>발매예정</th>
+          <th>R&D</th>
+          <th>공정</th>
+          <th>품질</th>
+          <th>최종</th>
+          <th>상태</th>
+          <th>액션</th>
+        </tr></thead>
+        <tbody id="np-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Risk Queue (위험도 평가 큐) -->
+  <div id="tab-riskqueue" class="tab-content" style="display:none;">
+    <div class="banner" id="rq-banner">
+      <strong>🎯 위험도 평가 큐</strong> — 내 부서가 평가해야 할 신제품 목록입니다. 1차 R&D 완료 후 2차(공정/품질)는 병렬로 평가합니다. 최종 위험도는 세 평가 중 <strong>최대값으로 자동 산정</strong>됩니다.
+    </div>
+    <div id="rq-no-profile" class="profile-banner" style="display:none;">
+      <div>👤 <strong>프로필 미설정</strong> — 평가 슬롯 가드를 위해 프로필을 설정하세요.</div>
+      <button class="btn btn-primary btn-sm" onclick="openProfileModal()">프로필 설정</button>
+    </div>
+    <div class="stats stats-cols-4" id="rq-stats" style="margin-bottom:14px;">
+      <div class="stat-card progress"><div class="label">내 평가 대기</div><div class="value" id="rq-mine">0</div></div>
+      <div class="stat-card risk"><div class="label">고위험 (잠정)</div><div class="value" id="rq-highrisk-pending">0</div></div>
+      <div class="stat-card done"><div class="label">최근 완료 (7일)</div><div class="value" id="rq-recent-done">0</div></div>
+      <div class="stat-card total"><div class="label">전체 미완 평가</div><div class="value" id="rq-all-pending">0</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>주차</th>
+          <th>제품명</th>
+          <th>브랜드</th>
+          <th>고객사</th>
+          <th>평가 슬롯</th>
+          <th>1차 R&D</th>
+          <th>잠정 최종</th>
+          <th>액션</th>
+        </tr></thead>
+        <tbody id="rq-tbody"></tbody>
       </table>
     </div>
   </div>
@@ -605,31 +709,47 @@
   <!-- Process -->
   <div id="tab-process" class="tab-content" style="display:none;">
     <h2 style="color: var(--text-primary); margin-bottom: 8px; font-size: 18px; font-weight: 700;">🔄 TO-BE 프로세스 (재정립)</h2>
-    <p style="color: var(--text-muted); margin-bottom: 18px;">동화약품 후시덤큐어 립크림 이슈 이후 재정립된 표준 프로세스입니다.</p>
-    <div class="flow">
+    <p style="color: var(--text-muted); margin-bottom: 18px;">전체 신제품 → 단계별 위험도 평가 → 시생산 요청서 작성으로 이어지는 깔때기형 프로세스입니다.</p>
+    <div class="flow" style="grid-template-columns: repeat(5, 1fr);">
       <div class="flow-step">
         <span class="num">1</span>
-        <h4>요청서 작성 (영업/마케팅)</h4>
-        <p>표준 양식에 따라 작성. <strong>No Data, No Work.</strong></p>
+        <h4>신제품 리스트 입력 (주단위)</h4>
+        <p>매주 신제품을 <strong>전체 등록</strong>. 누구나 입력 가능 (마케팅/해외영업/연구소). 최소 정보(제품명·브랜드·고객사·발매일).</p>
       </div>
       <div class="flow-step">
         <span class="num">2</span>
-        <h4>연구소 검토 (R&I)</h4>
-        <p>내용물-용기 적합성 사전 점검, 벌크 정보 기입 (벌크 코드, 비중, 점도 등).</p>
+        <h4>1차: R&D 위험도</h4>
+        <p>연구소가 신제품마다 <strong>R&D 위험도</strong> 평가 (낮음/보통/높음/심각) + 코멘트. 완료 후 2차 평가 잠금 해제.</p>
       </div>
       <div class="flow-step">
         <span class="num">3</span>
-        <h4>공정개발 확인</h4>
-        <p>홀더/몰드 제작 여부, 설비 이슈, <strong>생산라인 및 CAPA</strong>를 <strong>진행사항 업데이트</strong>에 기입.</p>
+        <h4>2차: 공정·품질 (병렬)</h4>
+        <p>공정개발팀과 품질팀이 <strong>병렬</strong>로 평가. 각자 4단계 등급 + 코멘트.</p>
       </div>
       <div class="flow-step">
         <span class="num">4</span>
-        <h4>더블체크 승인</h4>
-        <p>의뢰·검토·접수·승인 4단계 서명. 매주 1회 진행 현황 업데이트.</p>
+        <h4>최종 위험도 자동 산정</h4>
+        <p>세 평가 중 <strong>최댓값(max)</strong>이 자동 최종 위험도. 셋 다 완료되면 "평가 완료" 상태.</p>
+      </div>
+      <div class="flow-step">
+        <span class="num">5</span>
+        <h4>시생산 요청서 작성</h4>
+        <p>평가 완료 항목 중 시생산이 필요한 건만 선택해 요청서로 promote. 위험도/제품정보 자동 채움 후 보완 입력.</p>
       </div>
     </div>
 
-    <h3 style="margin: 24px 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">📌 재발 방지 5대 원칙</h3>
+    <h3 style="margin: 24px 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">📌 역할 및 책임</h3>
+    <div style="background: var(--bg-surface); padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 18px;">
+      <ul style="padding-left: 20px; line-height: 2;">
+        <li><strong>작성자</strong> (마케팅/해외영업/연구소) — 신제품 리스트 입력 (주단위). 권한 강제 없음.</li>
+        <li><strong>연구소</strong> — 1차 R&D 위험도 평가</li>
+        <li><strong>공정개발팀</strong> — 2차 공정 위험도 평가 (R&D 완료 후)</li>
+        <li><strong>품질팀</strong> — 2차 품질 위험도 평가 (R&D 완료 후, 공정과 병렬)</li>
+        <li><strong>참조자</strong> (생산팀/KS팩) — 읽기 전용</li>
+      </ul>
+    </div>
+
+    <h3 style="margin: 24px 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">📌 시생산 단계 재발 방지 원칙 (요청서 진행 시)</h3>
     <div style="background: var(--bg-surface); padding: 16px; border: 1px solid var(--border); border-radius: var(--radius);">
       <ol style="padding-left: 20px; line-height: 2;">
         <li><strong>표준 요청서 필수</strong> — 팀즈/유선만으로 진행 금지</li>
@@ -1254,6 +1374,71 @@
   </div>
 </div>
 
+<!-- New Product Form Modal -->
+<div class="modal-bg" id="np-form-modal">
+  <div class="modal" style="max-width: 640px;">
+    <div class="modal-header">
+      <h2 id="np-form-title">📦 신제품 추가</h2>
+      <button class="close-x" onclick="closeNewProductForm()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint" style="margin-bottom:14px;">최소 정보만 등록하세요. 위험도 평가는 등록 후 R&D → 공정/품질 순서로 진행됩니다.</p>
+      <div class="form-grid">
+        <div class="form-row full"><label>제품명 / 프로젝트명 <span class="req">*</span></label>
+          <input type="text" id="np-productName" placeholder="예: 루미아 토너 리뉴얼" maxlength="200">
+        </div>
+        <div class="form-row"><label>브랜드</label>
+          <input type="text" id="np-brand" placeholder="예: 루미아" maxlength="120">
+        </div>
+        <div class="form-row"><label>고객사</label>
+          <input type="text" id="np-customer" placeholder="예: 한빛코스메틱" maxlength="120">
+        </div>
+        <div class="form-row"><label>카테고리</label>
+          <select id="np-category">
+            <option value="">선택</option>
+            <option value="스킨케어">스킨케어</option>
+            <option value="메이크업">메이크업</option>
+            <option value="헤어/바디">헤어/바디</option>
+            <option value="선케어">선케어</option>
+            <option value="마스크">마스크</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <div class="form-row"><label>발매 예정일</label>
+          <input type="date" id="np-launchDate">
+        </div>
+        <div class="form-row full"><label>등록 주차 <span class="req">*</span></label>
+          <input type="week" id="np-weekKey">
+          <span class="hint">ISO 주차. 신제품 리스트 탭에서 선택한 주차가 기본값입니다.</span>
+        </div>
+        <div class="form-row full"><label>비고 / 특이사항</label>
+          <textarea id="np-note" rows="3" placeholder="예: 신규 제형 적용 예정, 충진 라인 검토 필요 등"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="np-form-delete" style="display:none;" onclick="deleteNewProductFromForm()">🗑 삭제</button>
+      <button class="btn btn-outline" onclick="closeNewProductForm()">취소</button>
+      <button class="btn btn-primary" onclick="saveNewProductForm()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Risk Eval Modal -->
+<div class="modal-bg" id="risk-modal">
+  <div class="modal" style="max-width: 580px;">
+    <div class="modal-header">
+      <h2 id="risk-modal-title">🎯 위험도 평가</h2>
+      <button class="close-x" onclick="closeRiskModal()">✕</button>
+    </div>
+    <div class="modal-body" id="risk-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeRiskModal()">취소</button>
+      <button class="btn btn-primary" id="risk-save-btn" onclick="saveRiskFromForm()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
 <!-- Snackbar (for delete undo etc.) -->
 <div class="snackbar" id="snackbar">
   <span class="snack-msg" id="snack-msg"></span>
@@ -1283,9 +1468,10 @@
 <script>
 // ==================== Data ====================
 const STORAGE_KEY = 'cosmax_pilot_requests_v4';
+const NEWPRODUCT_KEY = 'cosmax_new_products_v1';
 const META_KEY = 'cosmax_pilot_meta_v1';
 const PROFILE_KEY = 'cosmax_pilot_profile_v1';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const BACKUP_REMIND_DAYS = 7;
 
 // Role / Dept constants — designed for future SSO (claim-compatible)
@@ -1305,12 +1491,84 @@ const DEPTS_BY_ROLE = {
   ],
   [ROLE_REVIEWER]: [
     { key: 'pd', label: '공정개발팀' },
+    { key: 'qa', label: '품질팀' },
   ],
   [ROLE_VIEWER]: [
     { key: 'production', label: '생산팀' },
     { key: 'kspack', label: 'KS팩' },
   ],
 };
+
+// ===== 신제품 위험도 평가 상수 =====
+const RISK_LEVELS = ['낮음', '보통', '높음', '심각']; // 1차/2차 평가 4단계
+const RISK_SCORE = { '낮음': 1, '보통': 2, '높음': 3, '심각': 4, '매우높음': 4 };
+// 누가 어느 슬롯을 평가하는지 — 부서 키와 매핑
+const RISK_SLOTS = [
+  { key: 'rnd',     label: 'R&D (연구소)',   dept: 'ri',   role: ROLE_AUTHOR,   order: 1 },
+  { key: 'process', label: '공정 (공정개발)', dept: 'pd',   role: ROLE_REVIEWER, order: 2 },
+  { key: 'quality', label: '품질 (품질팀)',   dept: 'qa',   role: ROLE_REVIEWER, order: 2 },
+];
+const NP_STATUS = {
+  draft:      { label: '입력됨',     cls: 'b-pending' },
+  rnd_review: { label: 'R&D 평가 대기', cls: 'b-progress' },
+  pq_review:  { label: '공정·품질 평가 대기', cls: 'b-urgent' },
+  finalized:  { label: '평가 완료', cls: 'b-done' },
+  requested:  { label: '시생산 요청됨', cls: 'b-progress' },
+  excluded:   { label: '시생산 제외', cls: 'b-pending' },
+};
+function riskLevelBadge(level) {
+  return { '낮음':'b-risk-low', '보통':'b-risk-mid', '높음':'b-risk-high', '심각':'b-risk-crit', '매우높음':'b-risk-crit' }[level] || '';
+}
+function riskLevelLabel(level) { return level === '매우높음' ? '심각' : (level || ''); }
+function computeFinalRisk(np) {
+  if (!np || !np.risk) return null;
+  const slots = ['rnd','process','quality'];
+  let best = null, bestScore = 0;
+  slots.forEach(k => {
+    const lv = np.risk[k]?.level;
+    const sc = RISK_SCORE[lv] || 0;
+    if (sc > bestScore) { bestScore = sc; best = lv; }
+  });
+  return best;
+}
+function deriveNpStatus(np) {
+  if (!np) return 'draft';
+  if (np.linkedRequestId) return 'requested';
+  if (np.excluded) return 'excluded';
+  const r = np.risk || {};
+  const rndDone = !!(r.rnd && r.rnd.level);
+  const procDone = !!(r.process && r.process.level);
+  const qaDone = !!(r.quality && r.quality.level);
+  if (rndDone && procDone && qaDone) return 'finalized';
+  if (rndDone) return 'pq_review';
+  return 'rnd_review';
+}
+// ISO 주차 키: 2026-W22
+function isoWeekKey(date) {
+  const d = (date instanceof Date) ? new Date(date) : new Date(date || Date.now());
+  if (isNaN(d)) return '';
+  d.setHours(0,0,0,0);
+  // ISO: Thursday of current week determines the year
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getFullYear()}-W${String(week).padStart(2,'0')}`;
+}
+function isoWeekKeyShift(weekKey, delta) {
+  // weekKey 형태 "YYYY-WNN" → 그 주의 월요일에 delta*7일 더해 다시 isoWeekKey
+  const m = /^(\d{4})-W(\d{2})$/.exec(weekKey || '');
+  if (!m) return weekKey;
+  const year = +m[1], week = +m[2];
+  // ISO 주차 1일 (월요일) 계산
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = (jan4.getDay() + 6) % 7;
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - jan4Day + (week - 1) * 7);
+  monday.setDate(monday.getDate() + delta * 7);
+  return isoWeekKey(monday);
+}
+function genNpId() { return 'N' + Date.now() + Math.floor(Math.random()*1000); }
+function safeNpId(s) { return /^N\d+$/.test(String(s)) ? s : ''; }
 const ROLE_LABEL = Object.fromEntries(ROLES.map(r => [r.key, r.label]));
 function deptLabel(roleKey, deptKey) {
   const list = DEPTS_BY_ROLE[roleKey] || [];
@@ -1318,7 +1576,9 @@ function deptLabel(roleKey, deptKey) {
   return found ? found.label : '';
 }
 let requests = [];
+let newProducts = [];
 let meta = { schemaVersion: SCHEMA_VERSION, lastExport: null };
+let currentWeekKey = isoWeekKey(new Date()); // 신제품 리스트 탭의 현재 주차
 // SSO-compatible claim shape. Before SSO: user picks via profile modal.
 // After SSO: populate from IdP claims, keep same keys.
 let profile = { role: null, dept: null, name: '', email: '', org: 'COSMAX' };
@@ -1463,14 +1723,41 @@ function loadData() {
   if (saved) {
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) { requests = parsed; return; }
+      if (Array.isArray(parsed)) { requests = parsed; }
     } catch(e) {
       console.error('저장 데이터 파싱 실패:', e);
       alert('저장된 데이터를 불러올 수 없어 새로 시작합니다. (백업 파일이 있으면 [복원] 사용)');
     }
   }
-  requests = [];
-  saveData();
+  if (!Array.isArray(requests)) requests = [];
+  loadNewProducts();
+  // 처음 진입 시 저장 — schemaVersion 갱신 등
+  if (!localStorage.getItem(STORAGE_KEY)) saveData();
+}
+
+function loadNewProducts() {
+  const saved = localStorage.getItem(NEWPRODUCT_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) { newProducts = parsed; return; }
+    } catch(e) {
+      console.error('신제품 데이터 파싱 실패:', e);
+    }
+  }
+  newProducts = [];
+}
+function saveNewProducts() {
+  try {
+    localStorage.setItem(NEWPRODUCT_KEY, JSON.stringify(newProducts));
+    return true;
+  } catch (e) {
+    const isQuota = e && (e.name === 'QuotaExceededError' || /quota/i.test(String(e.message||e)));
+    alert(isQuota
+      ? '⚠ 신제품 리스트 저장 실패: 브라우저 저장 용량 초과. 백업 후 오래된 항목 정리 필요.'
+      : '신제품 리스트 저장 실패: ' + (e && e.message || e));
+    return false;
+  }
 }
 
 function saveData() {
@@ -1522,8 +1809,9 @@ function calcStorageBytes() {
     const a = localStorage.getItem(STORAGE_KEY) || '';
     const b = localStorage.getItem(META_KEY) || '';
     const c = localStorage.getItem(PROFILE_KEY) || '';
+    const d = localStorage.getItem(NEWPRODUCT_KEY) || '';
     // UTF-16 strings: each char ~2 bytes
-    return (a.length + b.length + c.length) * 2;
+    return (a.length + b.length + c.length + d.length) * 2;
   } catch(e) { return 0; }
 }
 function fmtBytes(n) {
@@ -1557,6 +1845,15 @@ function renderStorageUsage() {
   }
 }
 
+function goToNewProductsTab() {
+  const tab = Array.from(document.querySelectorAll('.tabs .tab')).find(t => t.textContent.includes('신제품 리스트'));
+  if (tab) switchTab('newproducts', tab);
+}
+function goToRiskQueueTab() {
+  const tab = Array.from(document.querySelectorAll('.tabs .tab')).find(t => t.textContent.includes('위험도 평가 큐'));
+  if (tab) switchTab('riskqueue', tab);
+}
+
 // Jump from dashboard stat card to filtered list
 function jumpToStatus(status) {
   const listTab = Array.from(document.querySelectorAll('.tabs .tab')).find(t => t.textContent.includes('리스트'));
@@ -1588,6 +1885,22 @@ function renderStats() {
   document.getElementById('stat-progress').textContent = requests.filter(r=>r.status==='progress').length;
   document.getElementById('stat-done').textContent = requests.filter(r=>r.status==='done').length;
   document.getElementById('stat-issue').textContent = requests.filter(r=>r.status==='issue').length;
+  // 신제품 평가 진행 현황
+  const npPending = newProducts.filter(np => {
+    const s = deriveNpStatus(np);
+    return s === 'rnd_review' || s === 'pq_review';
+  });
+  const npFinalized = newProducts.filter(np => deriveNpStatus(np) === 'finalized');
+  const npHighRisk = newProducts.filter(np => {
+    if (np.linkedRequestId || np.excluded) return false;
+    const f = computeFinalRisk(np);
+    return f === '높음' || f === '심각' || f === '매우높음';
+  });
+  const setIf = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  setIf('dash-np-total', newProducts.length);
+  setIf('dash-np-pending', npPending.length);
+  setIf('dash-np-finalized', npFinalized.length);
+  setIf('dash-np-highrisk', npHighRisk.length);
   renderBackupReminder();
   renderStorageUsage();
   renderProfileBanner();
@@ -2215,6 +2528,8 @@ function renderCurrent() {
   renderStats();
   if (currentTab === 'list') renderList();
   else if (currentTab === 'weekly') renderWeekly();
+  else if (currentTab === 'newproducts') renderNewProductList();
+  else if (currentTab === 'riskqueue') renderRiskQueue();
 }
 
 function switchFormTab(name, el) {
@@ -2720,8 +3035,15 @@ function deleteItem() {
   if (idx === -1) return;
   const backup = requests[idx];
   requests.splice(idx, 1);
+  // 신제품 링크 해제 (있다면)
+  let linkedNp = null;
+  if (backup.newProductId) {
+    linkedNp = newProducts.find(n => n.linkedRequestId === backup.id);
+    if (linkedNp) { linkedNp.linkedRequestId = null; saveNewProducts(); }
+  }
   if (!saveData()) {
     requests.splice(idx, 0, backup);
+    if (linkedNp) { linkedNp.linkedRequestId = backup.id; saveNewProducts(); }
     return;
   }
   closeForm();
@@ -2730,6 +3052,7 @@ function deleteItem() {
     `🗑 삭제됨: ${backup.product || backup.fgcode || backup.id}`,
     () => {
       requests.splice(Math.min(idx, requests.length), 0, backup);
+      if (linkedNp) { linkedNp.linkedRequestId = backup.id; saveNewProducts(); }
       if (saveData()) {
         renderCurrent();
         showSnackbar('↩ 되돌렸습니다.');
@@ -3636,7 +3959,7 @@ function exportCSV() {
 }
 
 function exportBackup() {
-  if (requests.length === 0) { alert('백업할 데이터가 없습니다.'); return; }
+  if (requests.length === 0 && newProducts.length === 0) { alert('백업할 데이터가 없습니다.'); return; }
   const now = new Date();
   const payload = {
     app: 'cosmax_pilot_requests',
@@ -3644,7 +3967,9 @@ function exportBackup() {
     schemaVersion: SCHEMA_VERSION,
     exportedAt: now.toISOString(),
     count: requests.length,
-    data: requests
+    newProductCount: newProducts.length,
+    data: requests,
+    newProducts: newProducts
   };
   const json = JSON.stringify(payload, null, 2);
   const blob = new Blob([json], {type:'application/json;charset=utf-8'});
@@ -3653,20 +3978,62 @@ function exportBackup() {
   a.href = url;
   const pad = n => String(n).padStart(2,'0');
   const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
-  a.download = `INPMS_시생산백업_${stamp}_${requests.length}건.json`;
+  const npTag = newProducts.length > 0 ? `_신제품${newProducts.length}` : '';
+  a.download = `INPMS_시생산백업_${stamp}_${requests.length}건${npTag}.json`;
   a.click();
   URL.revokeObjectURL(url);
   meta.lastExport = now.toISOString();
   saveMeta();
   renderCurrent();
-  showSnackbar(`💾 백업 완료: ${requests.length}건`);
+  showSnackbar(`💾 백업 완료: 요청 ${requests.length}건 / 신제품 ${newProducts.length}건`);
 }
 
 // Whitelist of fields a request record may contain (everything else is dropped)
-const IMPORT_STRING_FIELDS = FIELDS.concat(['id','docno']); // FIELDS already includes docno/rev etc., harmless duplicate
+const IMPORT_STRING_FIELDS = FIELDS.concat(['id','docno','newProductId']); // FIELDS already includes docno/rev etc., harmless duplicate
 const IMPORT_BOOL_FIELDS = CHECKS.map(c => 'chk_' + c);
 const IMPORT_PHOTO_FIELDS = PHOTO_KINDS.map(k => 'photo_' + k);
 const IMPORT_DOC_FIELDS = DOC_KINDS.map(k => 'doc_' + k);
+
+function sanitizeNewProduct(np) {
+  if (!np || typeof np !== 'object') return null;
+  const cleanRiskSlot = (s) => {
+    if (!s || typeof s !== 'object') return null;
+    const lv = typeof s.level === 'string' && RISK_SCORE[s.level] ? s.level : '';
+    if (!lv && !s.comment) return null;
+    return {
+      level: lv,
+      comment: typeof s.comment === 'string' ? s.comment.slice(0, 2000) : '',
+      by: typeof s.by === 'string' ? s.by.slice(0, 120) : '',
+      dept: typeof s.dept === 'string' ? s.dept.slice(0, 40) : '',
+      at: typeof s.at === 'string' ? s.at.slice(0, 30) : ''
+    };
+  };
+  const clean = {
+    id: (typeof np.id === 'string' && safeNpId(np.id)) ? np.id : genNpId(),
+    weekKey: (typeof np.weekKey === 'string' && /^\d{4}-W\d{2}$/.test(np.weekKey)) ? np.weekKey : isoWeekKey(new Date()),
+    productName: typeof np.productName === 'string' ? np.productName.slice(0, 200) : '',
+    brand: typeof np.brand === 'string' ? np.brand.slice(0, 120) : '',
+    customer: typeof np.customer === 'string' ? np.customer.slice(0, 120) : '',
+    category: typeof np.category === 'string' ? np.category.slice(0, 80) : '',
+    launchDate: typeof np.launchDate === 'string' ? np.launchDate.slice(0, 20) : '',
+    note: typeof np.note === 'string' ? np.note.slice(0, 2000) : '',
+    inputBy: (np.inputBy && typeof np.inputBy === 'object') ? {
+      name: typeof np.inputBy.name === 'string' ? np.inputBy.name.slice(0, 60) : '',
+      dept: typeof np.inputBy.dept === 'string' ? np.inputBy.dept.slice(0, 40) : '',
+      role: typeof np.inputBy.role === 'string' ? np.inputBy.role.slice(0, 20) : ''
+    } : { name: '', dept: '', role: '' },
+    inputAt: typeof np.inputAt === 'string' ? np.inputAt.slice(0, 30) : '',
+    risk: {
+      rnd: cleanRiskSlot(np.risk?.rnd),
+      process: cleanRiskSlot(np.risk?.process),
+      quality: cleanRiskSlot(np.risk?.quality)
+    },
+    excluded: !!np.excluded,
+    excludedReason: typeof np.excludedReason === 'string' ? np.excludedReason.slice(0, 500) : '',
+    linkedRequestId: (typeof np.linkedRequestId === 'string' && /^R\d+$/.test(np.linkedRequestId)) ? np.linkedRequestId : null
+  };
+  return clean;
+}
 
 function sanitizeUpdate(u) {
   if (!u || typeof u !== 'object') return null;
@@ -3698,6 +4065,8 @@ function sanitizeImportRecord(r) {
   IMPORT_DOC_FIELDS.forEach(k => { clean[k] = safeDocData(r[k]) || null; });
   // id: regenerate if not matching /^R\d+$/
   if (typeof clean.id !== 'string' || !/^R\d+$/.test(clean.id)) clean.id = genId();
+  // newProductId: drop if not matching /^N\d+$/
+  if (clean.newProductId && !/^N\d+$/.test(clean.newProductId)) clean.newProductId = '';
   // updates: array of sanitized entries
   const ups = Array.isArray(r.updates) ? r.updates.map(sanitizeUpdate).filter(Boolean) : [];
   clean.updates = ups;
@@ -3744,18 +4113,27 @@ function handleImport(event) {
       // Per-record whitelist sanitization: untrusted input never reaches storage as-is
       const data = raw.map(sanitizeImportRecord).filter(Boolean);
       const dropped = raw.length - data.length;
-      if (data.length === 0) throw new Error('유효한 레코드가 없습니다.');
+      // 신제품 리스트 (옵션) — 없으면 빈 배열
+      const rawNps = (parsed && Array.isArray(parsed.newProducts)) ? parsed.newProducts : [];
+      const nps = rawNps.map(sanitizeNewProduct).filter(Boolean);
+      const npDropped = rawNps.length - nps.length;
+      if (data.length === 0 && nps.length === 0) throw new Error('유효한 레코드가 없습니다.');
       const fileSchema = (parsed && Number.isInteger(parsed.schemaVersion)) ? parsed.schemaVersion : 0;
       const schemaWarn = fileSchema > SCHEMA_VERSION
         ? `\n⚠ 백업 파일 스키마(v${fileSchema})가 이 앱(v${SCHEMA_VERSION})보다 최신입니다. 일부 필드가 누락될 수 있습니다.`
-        : '';
-      const dropWarn = dropped > 0 ? `\n⚠ ${dropped}건은 형식 오류로 제외됩니다.` : '';
-      const msg = `${data.length}건을 복원합니다.\n\n⚠ 현재 저장된 ${requests.length}건은 덮어쓰기됩니다.${dropWarn}${schemaWarn}\n\n계속하시겠습니까?`;
+        : (fileSchema < SCHEMA_VERSION && fileSchema > 0)
+          ? `\nℹ 백업 파일이 구버전(v${fileSchema}) — 신제품 리스트가 비어있을 수 있습니다.`
+          : '';
+      const dropWarn = dropped > 0 ? `\n⚠ 요청 ${dropped}건은 형식 오류로 제외됩니다.` : '';
+      const npDropWarn = npDropped > 0 ? `\n⚠ 신제품 ${npDropped}건은 형식 오류로 제외됩니다.` : '';
+      const msg = `요청서 ${data.length}건, 신제품 ${nps.length}건을 복원합니다.\n\n⚠ 현재 저장된 요청 ${requests.length}건, 신제품 ${newProducts.length}건은 덮어쓰기됩니다.${dropWarn}${npDropWarn}${schemaWarn}\n\n계속하시겠습니까?`;
       if (!confirm(msg)) { event.target.value = ''; return; }
       requests = data;
+      newProducts = nps;
       if (!saveData()) { event.target.value = ''; return; }
+      saveNewProducts();
       renderCurrent();
-      showSnackbar(`✓ 복원 완료: ${data.length}건` + (dropped > 0 ? ` (${dropped}건 제외)` : ''), null, 6000);
+      showSnackbar(`✓ 복원 완료: 요청 ${data.length}건 / 신제품 ${nps.length}건` + (dropped + npDropped > 0 ? ` (${dropped + npDropped}건 제외)` : ''), null, 6000);
     } catch (err) {
       alert('복원 실패: ' + err.message);
     }
@@ -4260,8 +4638,488 @@ function seedDummyData() {
 
   requests = dummies.concat(requests);
   if (!saveData()) return;
+  // 신제품 리스트 더미 — 이번 주/지난 주 각 4건씩 다양한 평가 단계
+  seedDummyNewProducts();
   renderCurrent();
-  showSnackbar('🧪 더미 데이터 10건이 주입되었습니다.', null, 4000);
+  showSnackbar('🧪 더미 데이터 주입 완료 (요청 10건 + 신제품 8건)', null, 4000);
+}
+
+function seedDummyNewProducts() {
+  const legacyDummyNames = new Set([
+    '루미아 토너 리뉴얼','아우라 나이트 크림 신규 개발','듀이 글로우 세럼 개발','네오 모이스처 로션 리뉴얼',
+    '클라리어 비타민 에센스 신규 개발','베일라 데일리 선크림 리뉴얼','미라쥬 콜라겐 시트마스크 개발',
+    '솔리아 클렌징 밤 신규 개발','페탈 매트 립스틱 리뉴얼','노바 볼륨 마스카라 리뉴얼',
+    '베리 그린티 토너','오로라 화이트 앰플','클리어 포어 필링','선샤인 데일리 미스트',
+    '벨벳 매트 쿠션','퓨어 마린 클렌징오일','센슈얼 라일락 바디로션','크리스탈 글리터 아이섀도'
+  ]);
+  // 기존 신제품 더미 제거 (이름 기준)
+  newProducts = newProducts.filter(np => !legacyDummyNames.has(np.productName));
+  const thisWeek = isoWeekKey(new Date());
+  const prevWeek = isoWeekKeyShift(thisWeek, -1);
+  const now = new Date().toISOString();
+  const aheadDate = (n) => { const d = new Date(); d.setDate(d.getDate()+n); return d.toISOString().substring(0,10); };
+  const mk = (overrides) => Object.assign({
+    id: genNpId(),
+    weekKey: thisWeek,
+    productName: '', brand: '', customer: '', category: '', launchDate: '', note: '',
+    inputBy: { name: '관리자', dept: 'marketing', role: 'author' },
+    inputAt: now,
+    risk: { rnd: null, process: null, quality: null },
+    excluded: false, excludedReason: '', linkedRequestId: null
+  }, overrides);
+  const r = (level, by, comment, dept) => ({ level, comment: comment||'', by: by||'', dept: dept||'', at: now });
+  const dummies = [
+    // 이번 주: draft
+    mk({ productName:'베리 그린티 토너', brand:'베리', customer:'페탈코스메틱', category:'스킨케어', launchDate:aheadDate(60), note:'천연 추출물 신규 적용 가능성', weekKey:thisWeek }),
+    // 이번 주: R&D 평가 완료 → 공정·품질 대기
+    mk({ productName:'오로라 화이트 앰플', brand:'오로라', customer:'한빛코스메틱', category:'스킨케어', launchDate:aheadDate(45), weekKey:thisWeek,
+      risk:{ rnd:r('보통','김연구','기존 처방 응용, 안정성 우수','ri'), process:null, quality:null } }),
+    // 이번 주: 모두 평가 완료 (낮음/보통/낮음 → 최종 보통)
+    mk({ productName:'클리어 포어 필링', brand:'클리어', customer:'클라리어', category:'스킨케어', launchDate:aheadDate(30), weekKey:thisWeek,
+      risk:{ rnd:r('낮음','박연구','자사 표준 처방','ri'), process:r('보통','이공정','충진 라인 조정 필요','pd'), quality:r('낮음','최품질','이상 없음','qa') } }),
+    // 이번 주: 모두 평가 완료, 심각 등급 포함
+    mk({ productName:'선샤인 데일리 미스트', brand:'선샤인', customer:'네오스킨', category:'선케어', launchDate:aheadDate(20), weekKey:thisWeek,
+      risk:{ rnd:r('높음','김연구','신규 자외선 차단제 적용','ri'), process:r('심각','이공정','신규 충진 노즐 필요 - 라인 검증 필요','pd'), quality:r('높음','최품질','자외선 차단 안정성 신규 검증','qa') } }),
+    // 지난 주
+    mk({ productName:'벨벳 매트 쿠션', brand:'벨벳', customer:'미라쥬', category:'메이크업', launchDate:aheadDate(55), weekKey:prevWeek,
+      risk:{ rnd:r('보통','박연구','','ri'), process:r('보통','이공정','','pd'), quality:r('낮음','최품질','','qa') } }),
+    mk({ productName:'퓨어 마린 클렌징오일', brand:'퓨어', customer:'솔리아', category:'스킨케어', launchDate:aheadDate(40), weekKey:prevWeek,
+      risk:{ rnd:r('낮음','김연구','','ri'), process:null, quality:null } }),
+    mk({ productName:'센슈얼 라일락 바디로션', brand:'센슈얼', customer:'네오스킨', category:'헤어/바디', launchDate:aheadDate(35), weekKey:prevWeek, note:'향료 신규 채택' }),
+    mk({ productName:'크리스탈 글리터 아이섀도', brand:'크리스탈', customer:'노바스타일', category:'메이크업', launchDate:aheadDate(25), weekKey:prevWeek,
+      risk:{ rnd:r('높음','박연구','신규 펄·글리터 자재','ri'), process:r('높음','이공정','분진 관리 필요','pd'), quality:r('보통','최품질','','qa') } })
+  ];
+  newProducts = newProducts.concat(dummies);
+  saveNewProducts();
+}
+
+// ==================== New Product List ====================
+function setNpWeekToday() {
+  currentWeekKey = isoWeekKey(new Date());
+  renderNewProductList();
+}
+function shiftNpWeek(delta) {
+  currentWeekKey = isoWeekKeyShift(currentWeekKey, delta);
+  renderNewProductList();
+}
+function onNpWeekChange() {
+  const v = document.getElementById('np-week-input').value;
+  if (/^\d{4}-W\d{2}$/.test(v)) currentWeekKey = v;
+  renderNewProductList();
+}
+function npRange(weekKey) {
+  // weekKey "YYYY-Www" → 월요일 ~ 일요일 날짜
+  const m = /^(\d{4})-W(\d{2})$/.exec(weekKey || '');
+  if (!m) return { start: '', end: '' };
+  const year = +m[1], week = +m[2];
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = (jan4.getDay() + 6) % 7;
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - jan4Day + (week - 1) * 7);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+  return { start: fmt(monday), end: fmt(sunday) };
+}
+function renderNewProductList() {
+  const tb = document.getElementById('np-tbody');
+  if (!tb) return;
+  const wkInput = document.getElementById('np-week-input');
+  if (wkInput && wkInput.value !== currentWeekKey) wkInput.value = currentWeekKey;
+  const wkLabel = document.getElementById('np-week-label');
+  if (wkLabel) {
+    const r = npRange(currentWeekKey);
+    wkLabel.textContent = r.start ? `(${r.start} ~ ${r.end})` : '';
+  }
+  const q = (document.getElementById('np-search')?.value || '').trim().toLowerCase();
+  const fStatus = document.getElementById('np-filter-status')?.value || '';
+  const inWeek = newProducts.filter(np => np.weekKey === currentWeekKey);
+  const filtered = inWeek.filter(np => {
+    const st = deriveNpStatus(np);
+    if (fStatus && st !== fStatus) return false;
+    if (!q) return true;
+    return [np.productName, np.brand, np.customer, np.category, np.note].join(' ').toLowerCase().includes(q);
+  });
+  // 주차 통계
+  const stat = id => document.getElementById(id);
+  if (stat('np-stat-total')) stat('np-stat-total').textContent = inWeek.length;
+  if (stat('np-stat-rnd')) stat('np-stat-rnd').textContent = inWeek.filter(n => deriveNpStatus(n) === 'rnd_review').length;
+  if (stat('np-stat-pq')) stat('np-stat-pq').textContent = inWeek.filter(n => deriveNpStatus(n) === 'pq_review').length;
+  if (stat('np-stat-final')) stat('np-stat-final').textContent = inWeek.filter(n => { const s = deriveNpStatus(n); return s === 'finalized' || s === 'requested'; }).length;
+  if (filtered.length === 0) {
+    tb.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:24px">
+      ${inWeek.length === 0 ? '이 주차에 등록된 신제품이 없습니다. <strong>+ 신제품 추가</strong>로 등록하세요.' : '필터 결과가 없습니다.'}
+    </td></tr>`;
+    return;
+  }
+  const slotCell = (np, slotKey) => {
+    const s = np.risk?.[slotKey];
+    if (!s || !s.level) return '<span style="color:#cbd5e1">·</span>';
+    const cls = riskLevelBadge(s.level);
+    const by = s.by ? `<br><span style="font-size:10px;color:#64748b">${esc(s.by)}</span>` : '';
+    return `<span class="badge ${cls}" title="${esc(s.comment||'')}">${esc(riskLevelLabel(s.level))}</span>${by}`;
+  };
+  tb.innerHTML = filtered.map(np => {
+    const st = deriveNpStatus(np);
+    const stMeta = NP_STATUS[st] || NP_STATUS.draft;
+    const final = computeFinalRisk(np);
+    const finalCls = riskLevelBadge(final);
+    const finalCell = final ? `<span class="badge ${finalCls}">${esc(riskLevelLabel(final))}</span>` : '<span style="color:#cbd5e1">-</span>';
+    const sid = safeNpId(np.id);
+    const isFinalized = st === 'finalized';
+    const isLinked = st === 'requested';
+    const promoteBtn = isLinked
+      ? `<button class="btn btn-outline btn-sm" onclick="viewLinkedRequest('${sid}')" title="연결된 시생산 요청서 보기">📋 보기</button>`
+      : (isFinalized
+          ? `<button class="btn btn-primary btn-sm write-only" onclick="promoteNewProductToRequest('${sid}')" title="이 신제품으로 시생산 요청서 작성">📋 요청서 작성</button>`
+          : `<button class="btn btn-outline btn-sm" disabled title="평가가 완료되어야 합니다">📋 요청서</button>`);
+    return `
+    <tr>
+      <td><strong>${dash(np.productName)}</strong>${np.note?`<br><span style="font-size:11px;color:#64748b">${esc(np.note.slice(0,60))}${np.note.length>60?'…':''}</span>`:''}</td>
+      <td>${dash(np.brand)}</td>
+      <td>${dash(np.customer)}</td>
+      <td>${dash(np.category)}</td>
+      <td>${dash(np.launchDate)}</td>
+      <td>${slotCell(np,'rnd')}</td>
+      <td>${slotCell(np,'process')}</td>
+      <td>${slotCell(np,'quality')}</td>
+      <td>${finalCell}</td>
+      <td><span class="badge ${stMeta.cls}">${esc(stMeta.label)}</span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openRiskModal('${sid}')" title="위험도 평가">🎯</button>
+        <button class="btn btn-outline btn-sm write-only" onclick="openNewProductForm('${sid}')" title="편집">✏</button>
+        ${promoteBtn}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+let editingNpId = null;
+function openNewProductForm(id) {
+  if (isRole(ROLE_VIEWER)) { alert('읽기 전용 권한입니다.'); return; }
+  editingNpId = id || null;
+  const np = id ? newProducts.find(n => n.id === id) : null;
+  document.getElementById('np-form-title').textContent = np ? '📦 신제품 편집' : '📦 신제품 추가';
+  document.getElementById('np-form-delete').style.display = np ? '' : 'none';
+  document.getElementById('np-productName').value = np?.productName || '';
+  document.getElementById('np-brand').value = np?.brand || '';
+  document.getElementById('np-customer').value = np?.customer || '';
+  document.getElementById('np-category').value = np?.category || '';
+  document.getElementById('np-launchDate').value = np?.launchDate || '';
+  document.getElementById('np-weekKey').value = np?.weekKey || currentWeekKey || isoWeekKey(new Date());
+  document.getElementById('np-note').value = np?.note || '';
+  document.getElementById('np-form-modal').classList.add('active');
+  setTimeout(() => document.getElementById('np-productName').focus(), 50);
+}
+function closeNewProductForm() {
+  document.getElementById('np-form-modal').classList.remove('active');
+  editingNpId = null;
+}
+function saveNewProductForm() {
+  const productName = document.getElementById('np-productName').value.trim();
+  const weekKey = document.getElementById('np-weekKey').value.trim();
+  if (!productName) { alert('제품명은 필수입니다.'); return; }
+  if (!/^\d{4}-W\d{2}$/.test(weekKey)) { alert('등록 주차를 선택하세요.'); return; }
+  const now = new Date().toISOString();
+  const payload = {
+    productName,
+    brand: document.getElementById('np-brand').value.trim(),
+    customer: document.getElementById('np-customer').value.trim(),
+    category: document.getElementById('np-category').value,
+    launchDate: document.getElementById('np-launchDate').value,
+    weekKey,
+    note: document.getElementById('np-note').value.trim()
+  };
+  if (editingNpId) {
+    const idx = newProducts.findIndex(n => n.id === editingNpId);
+    if (idx >= 0) {
+      Object.assign(newProducts[idx], payload);
+    }
+  } else {
+    const fresh = {
+      id: genNpId(),
+      ...payload,
+      inputBy: { name: profile.name || '', dept: profile.dept || '', role: profile.role || '' },
+      inputAt: now,
+      risk: { rnd: null, process: null, quality: null },
+      excluded: false,
+      excludedReason: '',
+      linkedRequestId: null
+    };
+    newProducts.push(fresh);
+  }
+  if (!saveNewProducts()) return;
+  closeNewProductForm();
+  currentWeekKey = weekKey;
+  if (currentTab === 'newproducts') renderNewProductList();
+  if (currentTab === 'riskqueue') renderRiskQueue();
+  renderStats();
+  showSnackbar(editingNpId ? '✓ 신제품 정보 수정' : '✓ 신제품 등록');
+}
+function deleteNewProductFromForm() {
+  if (!editingNpId) return;
+  const np = newProducts.find(n => n.id === editingNpId);
+  if (!np) return;
+  if (np.linkedRequestId) {
+    alert('이미 시생산 요청서로 연결된 신제품은 삭제할 수 없습니다.\n요청서를 먼저 삭제하거나 연결을 해제하세요.');
+    return;
+  }
+  if (!confirm(`"${np.productName}"을(를) 삭제하시겠습니까?`)) return;
+  const idx = newProducts.findIndex(n => n.id === editingNpId);
+  const removed = newProducts.splice(idx, 1)[0];
+  if (!saveNewProducts()) { newProducts.splice(idx, 0, removed); return; }
+  closeNewProductForm();
+  renderNewProductList();
+  showSnackbar('🗑 신제품 삭제 완료', () => {
+    newProducts.splice(idx, 0, removed);
+    saveNewProducts();
+    renderNewProductList();
+  });
+}
+
+// ==================== Risk Eval ====================
+let editingRiskCtx = null; // { npId, slot }
+function inferSlotForProfile() {
+  // 프로필 부서 키로 평가 슬롯 추론
+  const dept = profile.dept;
+  if (dept === 'ri') return 'rnd';
+  if (dept === 'pd') return 'process';
+  if (dept === 'qa') return 'quality';
+  return null;
+}
+function canEvaluateSlot(np, slot) {
+  if (!np) return false;
+  if (slot === 'process' || slot === 'quality') {
+    // 2차: R&D 완료 후 가능
+    return !!(np.risk?.rnd && np.risk.rnd.level);
+  }
+  return true; // rnd
+}
+function openRiskModal(npId, forcedSlot) {
+  const np = newProducts.find(n => n.id === npId);
+  if (!np) { alert('신제품을 찾을 수 없습니다.'); return; }
+  if (np.linkedRequestId) {
+    alert('이미 시생산 요청서로 연결된 항목입니다.');
+    return;
+  }
+  if (isRole(ROLE_VIEWER)) { alert('읽기 전용 권한입니다.'); return; }
+  const profileSlot = inferSlotForProfile();
+  const slot = forcedSlot || profileSlot;
+  if (!slot) {
+    alert('평가 권한이 없습니다. 프로필을 연구소/공정개발/품질 중 하나로 설정하세요.');
+    return;
+  }
+  if (!canEvaluateSlot(np, slot)) {
+    alert('1차 R&D 평가가 완료되어야 2차(공정/품질) 평가가 가능합니다.');
+    return;
+  }
+  editingRiskCtx = { npId, slot };
+  const slotMeta = RISK_SLOTS.find(s => s.key === slot);
+  const existing = np.risk?.[slot];
+  const body = document.getElementById('risk-modal-body');
+  const otherSlots = RISK_SLOTS.filter(s => s.key !== slot).map(s => {
+    const v = np.risk?.[s.key];
+    return `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:var(--text-secondary);">
+      <span>${esc(s.label)}</span>
+      <span>${v && v.level ? `<span class="badge ${riskLevelBadge(v.level)}">${esc(riskLevelLabel(v.level))}</span>` : '<span style="color:#cbd5e1">미평가</span>'}</span>
+    </div>`;
+  }).join('');
+  body.innerHTML = `
+    <div style="background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:14px;font-size:13px;">
+      <div><strong>${esc(np.productName)}</strong>${np.brand?` · ${esc(np.brand)}`:''}${np.customer?` · ${esc(np.customer)}`:''}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">주차 ${esc(np.weekKey)}${np.category?` · ${esc(np.category)}`:''}${np.launchDate?` · 발매 ${esc(np.launchDate)}`:''}</div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <label><strong>평가 슬롯</strong></label>
+      <div style="padding:8px 10px;background:var(--accent-soft);border:1px solid var(--accent-border);border-radius:var(--radius-sm);color:#1e40af;font-weight:600;">${esc(slotMeta?.label || slot)}</div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <label>위험도 <span class="req">*</span></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${RISK_LEVELS.map(lv => `
+          <label style="display:flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);cursor:pointer;flex:1;min-width:90px;justify-content:center;${existing?.level === lv ? 'background:var(--accent-soft);border-color:var(--accent);' : ''}">
+            <input type="radio" name="risk-level" value="${lv}" ${existing?.level === lv ? 'checked' : ''}>
+            <span class="badge ${riskLevelBadge(lv)}">${esc(lv)}</span>
+          </label>`).join('')}
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px;">
+      <label>코멘트 / 근거</label>
+      <textarea id="risk-comment" rows="4" placeholder="평가 근거, 우려사항, 검토 필요 항목 등">${esc(existing?.comment || '')}</textarea>
+    </div>
+    <div style="background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;font-weight:600;">다른 슬롯 평가</div>
+      ${otherSlots}
+    </div>
+    ${existing?.by ? `<div class="hint" style="margin-top:10px;">기존 평가자: ${esc(existing.by)}${existing.at?` · ${esc(existing.at.slice(0,10))}`:''}</div>` : ''}
+  `;
+  document.getElementById('risk-modal-title').textContent = `🎯 위험도 평가 — ${slotMeta?.label || ''}`;
+  document.getElementById('risk-modal').classList.add('active');
+}
+function closeRiskModal() {
+  document.getElementById('risk-modal').classList.remove('active');
+  editingRiskCtx = null;
+}
+function saveRiskFromForm() {
+  if (!editingRiskCtx) return;
+  const { npId, slot } = editingRiskCtx;
+  const np = newProducts.find(n => n.id === npId);
+  if (!np) { alert('항목을 찾을 수 없습니다.'); return; }
+  const level = (document.querySelector('input[name="risk-level"]:checked') || {}).value;
+  if (!level) { alert('위험도를 선택하세요.'); return; }
+  const comment = document.getElementById('risk-comment').value.trim();
+  const now = new Date().toISOString();
+  np.risk = np.risk || { rnd: null, process: null, quality: null };
+  np.risk[slot] = {
+    level,
+    comment,
+    by: profile.name || '',
+    dept: profile.dept || '',
+    at: now
+  };
+  if (!saveNewProducts()) return;
+  closeRiskModal();
+  if (currentTab === 'newproducts') renderNewProductList();
+  if (currentTab === 'riskqueue') renderRiskQueue();
+  renderStats();
+  const final = computeFinalRisk(np);
+  showSnackbar(`✓ ${RISK_SLOTS.find(s => s.key === slot)?.label} 평가 저장${final?` · 잠정 최종: ${final}`:''}`);
+}
+
+// ==================== Risk Queue ====================
+function renderRiskQueue() {
+  const tb = document.getElementById('rq-tbody');
+  if (!tb) return;
+  const noProf = document.getElementById('rq-no-profile');
+  const banner = document.getElementById('rq-banner');
+  const slot = inferSlotForProfile();
+  if (noProf) noProf.style.display = (!hasProfile() || !slot) ? '' : 'none';
+  if (banner) banner.style.display = (!hasProfile() || !slot) ? 'none' : '';
+  // 통계
+  const myPending = slot ? newProducts.filter(np => {
+    if (np.linkedRequestId || np.excluded) return false;
+    if (!canEvaluateSlot(np, slot)) return false;
+    const s = np.risk?.[slot];
+    return !s || !s.level;
+  }) : [];
+  const allPending = newProducts.filter(np => {
+    if (np.linkedRequestId || np.excluded) return false;
+    const st = deriveNpStatus(np);
+    return st === 'rnd_review' || st === 'pq_review';
+  });
+  const highRiskPending = allPending.filter(np => {
+    const f = computeFinalRisk(np);
+    return f === '높음' || f === '심각' || f === '매우높음';
+  });
+  const sevenDaysAgo = Date.now() - 7*86400000;
+  const recentDone = newProducts.filter(np => {
+    const slots = ['rnd','process','quality'];
+    return slots.some(k => {
+      const t = new Date(np.risk?.[k]?.at || 0).getTime();
+      return t > sevenDaysAgo;
+    });
+  }).length;
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  set('rq-mine', myPending.length);
+  set('rq-highrisk-pending', highRiskPending.length);
+  set('rq-recent-done', recentDone);
+  set('rq-all-pending', allPending.length);
+  // 테이블: 내 슬롯이 있으면 내 미평가 우선, 없으면 전체 미완 표시
+  const rows = slot ? myPending : allPending;
+  if (rows.length === 0) {
+    tb.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:24px">${slot ? '평가 대기 항목이 없습니다.' : '전체 평가 미완 항목이 없습니다.'}</td></tr>`;
+    return;
+  }
+  // 정렬: 발매일 임박순 + 최신 주차 우선
+  rows.sort((a,b) => {
+    const da = a.launchDate ? new Date(a.launchDate).getTime() : Infinity;
+    const db = b.launchDate ? new Date(b.launchDate).getTime() : Infinity;
+    if (da !== db) return da - db;
+    return (a.weekKey > b.weekKey ? -1 : 1);
+  });
+  tb.innerHTML = rows.map(np => {
+    const sid = safeNpId(np.id);
+    const slotKey = slot || 'rnd';
+    const slotLbl = RISK_SLOTS.find(s => s.key === slotKey)?.label || '';
+    const rndCell = np.risk?.rnd?.level ? `<span class="badge ${riskLevelBadge(np.risk.rnd.level)}">${esc(riskLevelLabel(np.risk.rnd.level))}</span>` : '<span style="color:#cbd5e1">미평가</span>';
+    const tentativeFinal = computeFinalRisk(np);
+    const finalCell = tentativeFinal ? `<span class="badge ${riskLevelBadge(tentativeFinal)}">${esc(riskLevelLabel(tentativeFinal))}</span>` : '<span style="color:#cbd5e1">-</span>';
+    const canEval = slot && canEvaluateSlot(np, slot);
+    return `
+    <tr>
+      <td>${esc(np.weekKey)}</td>
+      <td><strong>${dash(np.productName)}</strong></td>
+      <td>${dash(np.brand)}</td>
+      <td>${dash(np.customer)}</td>
+      <td>${esc(slotLbl)}</td>
+      <td>${rndCell}</td>
+      <td>${finalCell}</td>
+      <td>${canEval
+        ? `<button class="btn btn-primary btn-sm" onclick="openRiskModal('${sid}','${slotKey}')">🎯 평가하기</button>`
+        : `<button class="btn btn-outline btn-sm" disabled title="1차 R&D 평가 후 진행 가능">⏳ 대기</button>`}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ==================== Promote → Request ====================
+function promoteNewProductToRequest(npId) {
+  const np = newProducts.find(n => n.id === npId);
+  if (!np) { alert('신제품을 찾을 수 없습니다.'); return; }
+  if (isRole(ROLE_VIEWER)) { alert('읽기 전용 권한입니다.'); return; }
+  if (deriveNpStatus(np) !== 'finalized') {
+    alert('세 슬롯(R&D, 공정, 품질) 위험도가 모두 평가되어야 시생산 요청서로 진행할 수 있습니다.');
+    return;
+  }
+  if (np.linkedRequestId) {
+    if (confirm('이미 연결된 요청서가 있습니다. 해당 요청서를 열까요?')) viewLinkedRequest(npId);
+    return;
+  }
+  if (!confirm(`"${np.productName}"을(를) 시생산 요청서로 작성하시겠습니까?\n신제품 정보가 새 요청서에 자동 채워집니다.`)) return;
+  const today = new Date().toISOString().substring(0,10);
+  const finalLevel = computeFinalRisk(np);
+  const rid = genId();
+  const fresh = {
+    id: rid,
+    docno: nextDocNo(),
+    rev: 'Rev.0',
+    reqdate: today,
+    urgency: (finalLevel === '심각' || finalLevel === '매우높음') ? 'critical' : (finalLevel === '높음' ? 'urgent' : 'normal'),
+    client: np.customer || '',
+    brand: np.brand || '',
+    project: np.productName || '',
+    product: np.productName || '',
+    launch: np.launchDate || '',
+    dept: profile.dept ? deptLabel(profile.role, profile.dept) : '',
+    sales: profile.name || '',
+    risk: finalLevel || '',
+    status: 'pending',
+    pilotstatus: '예정',
+    richeck: np.risk?.rnd?.comment ? '완료' : '대기',
+    pdcheck: (np.risk?.process?.comment || np.risk?.quality?.comment) ? '완료' : '대기',
+    memo: [
+      '【신제품 리스트에서 자동 생성】',
+      np.note ? `등록 메모: ${np.note}` : '',
+      np.risk?.rnd?.comment ? `R&D(${np.risk.rnd.level}): ${np.risk.rnd.comment}` : '',
+      np.risk?.process?.comment ? `공정(${np.risk.process.level}): ${np.risk.process.comment}` : '',
+      np.risk?.quality?.comment ? `품질(${np.risk.quality.level}): ${np.risk.quality.comment}` : '',
+    ].filter(Boolean).join('\n'),
+    updates: [],
+    newProductId: np.id
+  };
+  requests.push(fresh);
+  if (!saveData()) { requests.pop(); return; }
+  np.linkedRequestId = rid;
+  if (!saveNewProducts()) { /* keep request, link save best-effort */ }
+  renderCurrent();
+  showSnackbar(`📋 시생산 요청서 생성 완료 (문서번호 ${fresh.docno}) — 상세에서 보완 입력하세요.`);
+  // 요청서 편집 화면으로 바로 안내
+  setTimeout(() => {
+    if (typeof editItem === 'function') editItem(rid);
+  }, 200);
+}
+function viewLinkedRequest(npId) {
+  const np = newProducts.find(n => n.id === npId);
+  if (!np || !np.linkedRequestId) return;
+  if (typeof viewDetail === 'function') viewDetail(np.linkedRequestId);
 }
 
 // ==================== Init ====================
