@@ -4641,59 +4641,185 @@ function seedDummyData() {
 
   requests = dummies.concat(requests);
   if (!saveData()) return;
-  // 신제품 리스트 더미 — 이번 주/지난 주 각 4건씩 다양한 평가 단계
+  // 신제품 리스트 더미 — 5개 주차 × 다양한 평가 단계 50건
+  const npCountBefore = newProducts.length;
   seedDummyNewProducts();
+  const npAdded = newProducts.length - npCountBefore;
   renderCurrent();
-  showSnackbar('🧪 더미 데이터 주입 완료 (요청 10건 + 신제품 8건)', null, 4000);
+  showSnackbar(`🧪 더미 데이터 주입 완료 (요청 10건 + 신제품 ${Math.max(npAdded, 50)}건)`, null, 4000);
 }
 
 function seedDummyNewProducts() {
-  const legacyDummyNames = new Set([
+  // 50개 제품 풀 — 카테고리별 다양화
+  const pool = [
+    // 스킨케어 (20)
+    ['루미아 그린티 토너','루미아','한빛코스메틱','스킨케어'],
+    ['오로라 화이트 앰플','오로라','한빛코스메틱','스킨케어'],
+    ['클리어 포어 필링','클리어','클라리어','스킨케어'],
+    ['듀이 글로우 세럼','듀이','네오스킨','스킨케어'],
+    ['아우라 나이트 크림','아우라','미라쥬','스킨케어'],
+    ['베리 그린티 미스트','베리','페탈코스메틱','스킨케어'],
+    ['퓨어 마린 클렌징오일','퓨어','솔리아','스킨케어'],
+    ['모이스트 하이드라 에센스','모이스트','한빛코스메틱','스킨케어'],
+    ['센텔라 카밍 크림','센텔라','클라리어','스킨케어'],
+    ['리얼 비타민 부스터','리얼','네오스킨','스킨케어'],
+    ['글로우 콜라겐 패치','글로우','미라쥬','마스크'],
+    ['스무드 레티놀 세럼','스무드','솔리아','스킨케어'],
+    ['시카 리페어 밤','시카','한빛코스메틱','스킨케어'],
+    ['바이옴 프로바이오 토너','바이옴','클라리어','스킨케어'],
+    ['엔자임 클렌징 파우더','엔자임','네오스킨','스킨케어'],
+    ['멜팅 클렌징 밤','멜팅','솔리아','스킨케어'],
+    ['하이드로 부스팅 젤','하이드로','페탈코스메틱','스킨케어'],
+    ['아쿠아 미스트 토너','아쿠아','미라쥬','스킨케어'],
+    ['벨벳 슬리핑 마스크','벨벳','클라리어','마스크'],
+    ['소프트 펩타이드 크림','소프트','네오스킨','스킨케어'],
+    // 메이크업 (12)
+    ['페탈 매트 립스틱','페탈','페탈코스메틱','메이크업'],
+    ['노바 볼륨 마스카라','노바','노바스타일','메이크업'],
+    ['벨벳 매트 쿠션','벨벳','미라쥬','메이크업'],
+    ['크리스탈 글리터 아이섀도','크리스탈','노바스타일','메이크업'],
+    ['글로시 틴트 립글로스','글로시','페탈코스메틱','메이크업'],
+    ['스컬프트 컨투어 파우더','스컬프트','노바스타일','메이크업'],
+    ['루미너스 하이라이터','루미너스','미라쥬','메이크업'],
+    ['픽시 블러셔 팔레트','픽시','페탈코스메틱','메이크업'],
+    ['벨벳 매트 파운데이션','벨벳','미라쥬','메이크업'],
+    ['실키 아이라이너','실키','노바스타일','메이크업'],
+    ['듀얼 듀이 쿠션','듀얼','한빛코스메틱','메이크업'],
+    ['컬러 브로우 마스카라','컬러','페탈코스메틱','메이크업'],
+    // 선케어 (5)
+    ['선샤인 데일리 미스트','선샤인','네오스킨','선케어'],
+    ['베일라 무기자차 선크림','베일라','클라리어','선케어'],
+    ['아쿠아 선 패치','아쿠아','솔리아','선케어'],
+    ['쿨링 선 스틱','쿨링','한빛코스메틱','선케어'],
+    ['에어리 선 세럼','에어리','미라쥬','선케어'],
+    // 헤어/바디 (7)
+    ['센슈얼 라일락 바디로션','센슈얼','네오스킨','헤어/바디'],
+    ['보타닉 헤어 세럼','보타닉','솔리아','헤어/바디'],
+    ['딥 클렌징 샴푸','딥','한빛코스메틱','헤어/바디'],
+    ['실크 컨디셔너','실크','클라리어','헤어/바디'],
+    ['바닐라 바디 미스트','바닐라','페탈코스메틱','헤어/바디'],
+    ['리치 핸드크림','리치','미라쥬','헤어/바디'],
+    ['로즈 바디 워시','로즈','노바스타일','헤어/바디'],
+    // 마스크/기타 (6)
+    ['콜라겐 시트마스크','콜라','미라쥬','마스크'],
+    ['뮤신 패치 마스크','뮤신','네오스킨','마스크'],
+    ['하이드로겔 아이패치','하이드로겔','클라리어','마스크'],
+    ['리프팅 도자 마스크','리프트','한빛코스메틱','마스크'],
+    ['그린티 클레이팩','그린티','솔리아','마스크'],
+    ['핑크 클레이 마스크','핑크','페탈코스메틱','기타']
+  ];
+
+  // 기존 더미 제거 (이름 기준 — 신규 풀 포함 + 옛 더미 이름)
+  const legacyNames = new Set([
+    ...pool.map(p => p[0]),
+    // 옛 시드 잔여
     '루미아 토너 리뉴얼','아우라 나이트 크림 신규 개발','듀이 글로우 세럼 개발','네오 모이스처 로션 리뉴얼',
     '클라리어 비타민 에센스 신규 개발','베일라 데일리 선크림 리뉴얼','미라쥬 콜라겐 시트마스크 개발',
     '솔리아 클렌징 밤 신규 개발','페탈 매트 립스틱 리뉴얼','노바 볼륨 마스카라 리뉴얼',
     '베리 그린티 토너','오로라 화이트 앰플','클리어 포어 필링','선샤인 데일리 미스트',
-    '벨벳 매트 쿠션','퓨어 마린 클렌징오일','센슈얼 라일락 바디로션','크리스탈 글리터 아이섀도'
+    '퓨어 마린 클렌징오일','센슈얼 라일락 바디로션','크리스탈 글리터 아이섀도'
   ]);
-  // 기존 신제품 더미 제거 (이름 기준)
-  newProducts = newProducts.filter(np => !legacyDummyNames.has(np.productName));
+  newProducts = newProducts.filter(np => !legacyNames.has(np.productName));
+
   const thisWeek = isoWeekKey(new Date());
-  const prevWeek = isoWeekKeyShift(thisWeek, -1);
+  const weeks = [
+    thisWeek,
+    isoWeekKeyShift(thisWeek, -1),
+    isoWeekKeyShift(thisWeek, -2),
+    isoWeekKeyShift(thisWeek, -3),
+    isoWeekKeyShift(thisWeek, -4)
+  ];
   const now = new Date().toISOString();
   const aheadDate = (n) => { const d = new Date(); d.setDate(d.getDate()+n); return d.toISOString().substring(0,10); };
-  const mk = (overrides) => Object.assign({
-    id: genNpId(),
-    weekKey: thisWeek,
-    productName: '', brand: '', customer: '', category: '', launchDate: '', note: '',
-    inputBy: { name: '관리자', dept: 'marketing', role: 'author' },
-    inputAt: now,
-    risk: { rnd: null, process: null, quality: null },
-    excluded: false, excludedReason: '', linkedRequestId: null
-  }, overrides);
   const r = (level, by, comment, dept) => ({ level, comment: comment||'', by: by||'', dept: dept||'', at: now });
-  const dummies = [
-    // 이번 주: draft
-    mk({ productName:'베리 그린티 토너', brand:'베리', customer:'페탈코스메틱', category:'스킨케어', launchDate:aheadDate(60), note:'천연 추출물 신규 적용 가능성', weekKey:thisWeek }),
-    // 이번 주: R&D 평가 완료 → 공정·품질 대기
-    mk({ productName:'오로라 화이트 앰플', brand:'오로라', customer:'한빛코스메틱', category:'스킨케어', launchDate:aheadDate(45), weekKey:thisWeek,
-      risk:{ rnd:r('보통','김연구','기존 처방 응용, 안정성 우수','ri'), process:null, quality:null } }),
-    // 이번 주: 모두 평가 완료 (낮음/보통/낮음 → 최종 보통)
-    mk({ productName:'클리어 포어 필링', brand:'클리어', customer:'클라리어', category:'스킨케어', launchDate:aheadDate(30), weekKey:thisWeek,
-      risk:{ rnd:r('낮음','박연구','자사 표준 처방','ri'), process:r('보통','이공정','충진 라인 조정 필요','pd'), quality:r('낮음','최품질','이상 없음','qa') } }),
-    // 이번 주: 모두 평가 완료, 심각 등급 포함
-    mk({ productName:'선샤인 데일리 미스트', brand:'선샤인', customer:'네오스킨', category:'선케어', launchDate:aheadDate(20), weekKey:thisWeek,
-      risk:{ rnd:r('높음','김연구','신규 자외선 차단제 적용','ri'), process:r('심각','이공정','신규 충진 노즐 필요 - 라인 검증 필요','pd'), quality:r('높음','최품질','자외선 차단 안정성 신규 검증','qa') } }),
-    // 지난 주
-    mk({ productName:'벨벳 매트 쿠션', brand:'벨벳', customer:'미라쥬', category:'메이크업', launchDate:aheadDate(55), weekKey:prevWeek,
-      risk:{ rnd:r('보통','박연구','','ri'), process:r('보통','이공정','','pd'), quality:r('낮음','최품질','','qa') } }),
-    mk({ productName:'퓨어 마린 클렌징오일', brand:'퓨어', customer:'솔리아', category:'스킨케어', launchDate:aheadDate(40), weekKey:prevWeek,
-      risk:{ rnd:r('낮음','김연구','','ri'), process:null, quality:null } }),
-    mk({ productName:'센슈얼 라일락 바디로션', brand:'센슈얼', customer:'네오스킨', category:'헤어/바디', launchDate:aheadDate(35), weekKey:prevWeek, note:'향료 신규 채택' }),
-    mk({ productName:'크리스탈 글리터 아이섀도', brand:'크리스탈', customer:'노바스타일', category:'메이크업', launchDate:aheadDate(25), weekKey:prevWeek,
-      risk:{ rnd:r('높음','박연구','신규 펄·글리터 자재','ri'), process:r('높음','이공정','분진 관리 필요','pd'), quality:r('보통','최품질','','qa') } })
+
+  // 평가자 풀
+  const RND  = ['김연구','박연구','안연구','권연구'];
+  const PROC = ['이공정','장공정','하공정','백공정'];
+  const QA   = ['최품질','권품질','구품질','남품질'];
+
+  // 평가 단계 시나리오 — 인덱스 % 10으로 분배 (총 10개 시나리오, 50개면 각 5건)
+  // 0: draft (등록만)
+  // 1: R&D만 완료 (낮음~보통)
+  // 2: R&D만 완료 (높음/심각)
+  // 3: R&D + 공정 완료, 품질 대기
+  // 4: R&D + 품질 완료, 공정 대기
+  // 5: 전체 완료 — 낮음 위주
+  // 6: 전체 완료 — 보통/높음 mix
+  // 7: 전체 완료 — 심각 포함 (고위험)
+  // 8: 시생산 제외 (excluded, 평가 일부)
+  // 9: 시생산 요청서 연결 (requested) — 전체 평가 + linkedRequestId
+  const scenarios = [
+    () => ({}),
+    () => ({ risk: { rnd: r('낮음', RND[0], '자사 표준 처방, 안정성 양호', 'ri'), process: null, quality: null } }),
+    () => ({ risk: { rnd: r('높음', RND[1], '신규 활성 성분 — 보존력 검증 필요', 'ri'), process: null, quality: null } }),
+    () => ({ risk: { rnd: r('보통', RND[2], '기존 처방 변경 소폭', 'ri'), process: r('보통', PROC[0], '충진 속도 조정 필요', 'pd'), quality: null } }),
+    () => ({ risk: { rnd: r('보통', RND[3], '안정성 보완 처방', 'ri'), process: null, quality: r('낮음', QA[0], '미생물 기준 통과', 'qa') } }),
+    () => ({ risk: { rnd: r('낮음', RND[0], '기존 양산 라인', 'ri'), process: r('낮음', PROC[1], '특이사항 없음', 'pd'), quality: r('낮음', QA[1], '기준 충족', 'qa') } }),
+    () => ({ risk: { rnd: r('보통', RND[1], '향료 신규', 'ri'), process: r('높음', PROC[2], '신규 충진 라인 적용', 'pd'), quality: r('보통', QA[2], '향료 안정성 검증 필요', 'qa') } }),
+    () => ({ risk: { rnd: r('높음', RND[2], '신규 제형, 점도 컨트롤 까다로움', 'ri'), process: r('심각', PROC[3], '신규 설비 도입 필요 — 일정 압박', 'pd'), quality: r('높음', QA[3], '안정성 데이터 추가 필요', 'qa') } }),
+    () => ({ risk: { rnd: r('낮음', RND[3], '', 'ri'), process: null, quality: null }, excluded: true, excludedReason: '마케팅 사정으로 시생산 보류' }),
+    () => ({ risk: { rnd: r('보통', RND[0], '', 'ri'), process: r('보통', PROC[0], '', 'pd'), quality: r('보통', QA[0], '', 'qa') }, _linkRequest: true })
   ];
+
+  const dummies = [];
+  for (let i = 0; i < pool.length; i++) {
+    const [productName, brand, customer, category] = pool[i];
+    const week = weeks[Math.floor(i / 10) % weeks.length]; // 10개씩 주차 분배
+    const scenario = scenarios[i % scenarios.length];
+    const launchOffset = 15 + (i * 3) % 70; // 15~85일 후 다양
+    const base = {
+      id: genNpId(),
+      weekKey: week,
+      productName,
+      brand,
+      customer,
+      category,
+      launchDate: aheadDate(launchOffset),
+      note: '',
+      inputBy: { name: '관리자', dept: 'marketing', role: 'author' },
+      inputAt: now,
+      risk: { rnd: null, process: null, quality: null },
+      excluded: false,
+      excludedReason: '',
+      linkedRequestId: null
+    };
+    const overrides = scenario();
+    const linkRequest = overrides._linkRequest;
+    delete overrides._linkRequest;
+    Object.assign(base, overrides);
+
+    // requested 시나리오는 실제 요청서가 있으면 그 ID로 연결, 없으면 미리 생성
+    if (linkRequest) {
+      const rid = genId();
+      requests.push({
+        id: rid,
+        docno: nextDocNo(),
+        rev: 'Rev.0',
+        reqdate: now.substring(0, 10),
+        urgency: 'normal',
+        client: customer,
+        brand: brand,
+        project: productName,
+        product: productName,
+        launch: base.launchDate,
+        risk: '보통',
+        status: 'pending',
+        pilotstatus: '예정',
+        richeck: '완료',
+        pdcheck: '완료',
+        memo: '【신제품 더미 — 자동 promote】',
+        updates: [],
+        newProductId: base.id,
+        _dummy: true
+      });
+      base.linkedRequestId = rid;
+    }
+    dummies.push(base);
+  }
   newProducts = newProducts.concat(dummies);
   saveNewProducts();
+  saveData(); // requested 시나리오에서 추가된 요청서 반영
 }
 
 // ==================== New Product List ====================
