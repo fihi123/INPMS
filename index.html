@@ -466,25 +466,9 @@
 
   <!-- Dashboard -->
   <div id="tab-dashboard" class="tab-content">
-    <div class="banner">
-      <strong>⚠ No Data, No Work 원칙</strong> — 요청서 미작성 건은 접수되지 않습니다.<br><br>
-      <strong>📌 로컬 저장소 안내</strong> — 이 시스템은 서버 없이 브라우저에 데이터를 저장합니다. <strong>캐시 삭제 시 데이터가 유실되므로, 하단의 [백업(JSON)]을 주기적으로 실행</strong>하세요. (첨부 사진은 자동 압축 저장됩니다.)
-    </div>
     <div id="profile-banner" class="profile-banner" style="display:none;">
       <div>👤 <strong>프로필 미설정</strong> — 부서/역할을 설정하면 화면이 최적화됩니다 (향후 사내 계정 연동 예정)</div>
       <button class="btn btn-primary btn-sm" onclick="openProfileModal()">프로필 설정</button>
-    </div>
-    <div id="backup-reminder" style="display:none; background:var(--warning-soft); border:1px solid var(--warning-border); border-left:3px solid var(--warning); padding:10px 14px; border-radius:var(--radius-sm); margin-bottom:14px; font-size:13px; color:#92400e;">
-      <strong>💾 백업 알림</strong> — <span id="backup-reminder-msg"></span>
-      <button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="exportBackup()">지금 백업</button>
-    </div>
-    <div id="storage-usage" class="storage-usage" style="display:none;">
-      <div class="label">
-        <span>💽 <strong>로컬 저장소 사용량</strong> <span id="storage-usage-text" style="color:#64748b;font-weight:normal;">계산 중…</span></span>
-        <span id="storage-usage-percent" style="font-weight:600;">-</span>
-      </div>
-      <div class="bar"><div id="storage-usage-bar" class="bar-fill" style="width:0%;"></div></div>
-      <div id="storage-usage-hint" style="margin-top:6px; color:#94a3b8; font-size:11px;">사진 첨부가 많으면 5MB 한계에 빠르게 도달할 수 있습니다.</div>
     </div>
     <div id="np-summary" style="margin-bottom:18px;">
       <h3 style="margin: 0 0 10px; color: var(--text-primary); font-size: 14px; font-weight: 600;">📦 신제품 평가 현황 <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:6px;">신제품 리스트 → R&D → 공정·품질 → 시생산 요청서</span></h3>
