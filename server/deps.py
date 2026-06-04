@@ -5,6 +5,7 @@
 """
 from fastapi import Header
 from typing import Optional
+from urllib.parse import unquote
 
 
 class CurrentUser:
@@ -24,8 +25,9 @@ def get_current_user(
     x_user_dept: Optional[str] = Header(default=""),
     x_user_role: Optional[str] = Header(default=""),
 ) -> CurrentUser:
+    # 프론트엔드가 한글 이름을 percent-encoding 해서 보냄
     return CurrentUser(
-        name=(x_user_name or "")[:60],
+        name=unquote(x_user_name or "")[:60],
         dept=(x_user_dept or "")[:40],
         role=(x_user_role or "")[:20],
     )

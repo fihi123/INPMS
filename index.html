@@ -1452,6 +1452,7 @@
   </div>
 </div>
 
+<script src="js/api-client.js"></script>
 <script>
 // ==================== Data ====================
 const STORAGE_KEY = 'cosmax_pilot_requests_v4';
@@ -1704,8 +1705,23 @@ function renderProfileBanner() {
   el.style.display = '';
 }
 
-function loadData() {
+async function loadData() {
   loadMeta();
+  // 1) 백엔드가 살아있으면 서버 데이터(첨부 포함)를 우선 로드 → API 모드
+  if (window.INPMS_API) {
+    const server = await INPMS_API.load();
+    if (server) {
+      requests = Array.isArray(server.requests) ? server.requests : [];
+      newProducts = Array.isArray(server.newProducts) ? server.newProducts : [];
+      // 오프라인 캐시로 localStorage 미러링 (실패해도 무시)
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+        localStorage.setItem(NEWPRODUCT_KEY, JSON.stringify(newProducts));
+      } catch(e) { /* 용량 초과 시 캐시만 생략 */ }
+      return;
+    }
+  }
+  // 2) 폴백: localStorage (정적 배포/오프라인 — 기존 동작)
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
     try {
@@ -1737,6 +1753,7 @@ function loadNewProducts() {
 function saveNewProducts() {
   try {
     localStorage.setItem(NEWPRODUCT_KEY, JSON.stringify(newProducts));
+    if (window.INPMS_API && INPMS_API.enabled) INPMS_API.syncNewProducts(newProducts);
     return true;
   } catch (e) {
     const isQuota = e && (e.name === 'QuotaExceededError' || /quota/i.test(String(e.message||e)));
@@ -1750,6 +1767,7 @@ function saveNewProducts() {
 function saveData() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+    if (window.INPMS_API && INPMS_API.enabled) INPMS_API.syncRequests(requests);
     return true;
   } catch (e) {
     const isQuota = e && (e.name === 'QuotaExceededError' || /quota/i.test(String(e.message||e)));
@@ -5424,12 +5442,14 @@ function viewLinkedRequest(npId) {
 }
 
 // ==================== Init ====================
-loadData();
-loadProfile();
-renderProfileBadge();
-renderProfileBanner();
-applyRoleUI();
-renderCurrent();
+(async function init() {
+  loadProfile();          // 동기화 헤더용 프로필 먼저 로드
+  await loadData();       // 서버(API 모드) 또는 localStorage(폴백)에서 로드
+  renderProfileBadge();
+  renderProfileBanner();
+  applyRoleUI();
+  renderCurrent();
+})();
 
 // Close any open modal with ESC, or by clicking the backdrop outside the modal.
 document.addEventListener('keydown', (e) => {
