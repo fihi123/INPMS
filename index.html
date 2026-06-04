@@ -297,6 +297,10 @@
   }
   .form-row .field-error-msg { color: var(--danger); font-size: 11px; margin-top: 3px; font-weight: 600; }
 
+  /* Numeric-field validation (real-time) — works in form-row and bulk table cells */
+  input.num-invalid { border-color: var(--danger) !important; background: var(--danger-soft); box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+  .num-err-msg { color: var(--danger); font-size: 11px; margin-top: 3px; font-weight: 600; line-height: 1.3; }
+
   /* Required-summary box (top of form) */
   .req-summary {
     background: var(--info-soft); border: 1px solid var(--info-border); border-radius: var(--radius-sm);
@@ -2849,6 +2853,7 @@ function openForm() {
   bindReqSummaryListeners();
   refreshReqSummary();
   document.getElementById('form-modal').classList.add('active');
+  onFormOpened();
   openDefaultTabForProfile();
 }
 
@@ -2956,6 +2961,7 @@ function editItem(id) {
   bindReqSummaryListeners();
   refreshReqSummary();
   document.getElementById('form-modal').classList.add('active');
+  onFormOpened();
   document.querySelectorAll('.modal-tab')[0].click();
 }
 
@@ -2966,7 +2972,77 @@ function clearForm() {
   document.getElementById('f-rev').value = 'Rev.0';
 }
 
-function closeForm() { document.getElementById('form-modal').classList.remove('active'); }
+// ==================== 미저장 이탈 경고 + 숫자 유효성 (실시간) ====================
+let formDirty = false;
+function isFormOpen() {
+  const fm = document.getElementById('form-modal');
+  return !!(fm && fm.classList.contains('active'));
+}
+
+// 측정값/수량 숫자 필드의 형식·물리적 범위 규칙 (조건/외관/허용오차 등 텍스트 필드는 제외)
+const NUMERIC_RULES = {
+  sg_now:   { min: 0, label: '비중' },   sg_next:   { min: 0, label: '비중' },
+  visc_now: { min: 0, label: '점도' },   visc_next: { min: 0, label: '점도' },
+  hard_now: { min: 0, label: '경도' },   hard_next: { min: 0, label: '경도' },
+  bph_now:  { min: 0, max: 14, label: 'pH' }, bph_next: { min: 0, max: 14, label: 'pH' },
+  fillwt:   { min: 0, label: '충진량' }, filltemp:  { min: 0, label: '충진 온도' },
+  melttemp: { min: 0, label: '용해 온도' }
+};
+// 콤마(천단위)·공백 허용, 단위 등 비숫자 입력은 오류로 처리
+function parseNumField(v) {
+  const s = String(v == null ? '' : v).replace(/[,\s]/g, '');
+  if (s === '') return { empty: true };
+  if (!/^-?\d*\.?\d+$/.test(s)) return { bad: true };
+  return { n: parseFloat(s) };
+}
+function applyNumError(el, msg) {
+  el.classList.toggle('num-invalid', !!msg);
+  el.title = msg || '';
+  let m = el.parentNode ? el.parentNode.querySelector('.num-err-msg') : null;
+  if (msg) {
+    if (!m) { m = document.createElement('div'); m.className = 'num-err-msg'; el.parentNode.appendChild(m); }
+    m.textContent = '⚠ ' + msg;
+  } else if (m) { m.remove(); }
+}
+function validateNumField(field) {
+  const el = document.getElementById('f-' + field);
+  const rule = NUMERIC_RULES[field];
+  if (!el || !rule) return true;
+  const r = parseNumField(el.value);
+  let msg = '';
+  if (r.bad) msg = '숫자만 입력하세요 (예: ' + (field === 'bph_now' || field === 'bph_next' ? '6.5' : '12,500') + ')';
+  else if (!r.empty && rule.min !== undefined && r.n < rule.min) msg = rule.label + '은(는) 0 이상이어야 합니다';
+  else if (!r.empty && rule.max !== undefined && r.n > rule.max) msg = rule.label + ' 범위(0–' + rule.max + ')를 벗어났습니다';
+  applyNumError(el, msg);
+  return !msg;
+}
+function validateAllNum() { return Object.keys(NUMERIC_RULES).every(validateNumField); }
+function numInvalidCount() { return Object.keys(NUMERIC_RULES).filter(f => !validateNumField(f)).length; }
+
+// 폼이 열릴 때 호출: 미저장 플래그 초기화 + 기존 데이터의 숫자 오류 즉시 표시
+function onFormOpened() { formDirty = false; validateAllNum(); }
+
+// 폼 내 사용자 입력 추적: 미저장 플래그 + 숫자 필드 실시간 검사 (1회 바인딩)
+(function bindFormGuards() {
+  const fm = document.getElementById('form-modal');
+  if (!fm) return;
+  fm.addEventListener('input', (e) => {
+    formDirty = true;                          // 프로그램 채움(value=)은 input 이벤트가 없어 영향 없음
+    const id = e.target && e.target.id;
+    if (id && id.indexOf('f-') === 0) {
+      const f = id.slice(2);
+      if (NUMERIC_RULES[f]) validateNumField(f);
+    }
+  });
+})();
+
+function closeForm(force) {
+  if (!force && formDirty && isFormOpen()) {
+    if (!confirm('작성 중인 내용이 저장되지 않았습니다.\n변경 사항을 버리고 닫으시겠습니까?')) return;
+  }
+  formDirty = false;
+  document.getElementById('form-modal').classList.remove('active');
+}
 
 function saveForm() {
   clearFieldErrors();
@@ -3012,6 +3088,11 @@ function saveForm() {
   if ((newmatY || newMaterialChecked) && !msdsAttached) {
     warnings.push('신규 원료/자재 사용 건은 MSDS(물질안전보건자료) 첨부가 필요합니다 — 품질/리스크 탭의 첨부문서를 확인하세요.');
   }
+  // 측정값·수량 숫자 오류 (빨간 테두리). 강제 차단은 아니고 저장 전 확인.
+  const numBad = numInvalidCount();
+  if (numBad > 0) {
+    warnings.push(`측정값·수량 숫자 입력 오류 ${numBad}건 — 빨간 테두리 항목을 확인하세요 (비숫자·음수·pH 범위 등).`);
+  }
   if (warnings.length && !confirm('⚠ 저장 전 확인이 필요합니다:\n\n- ' + warnings.join('\n- ') + '\n\n그래도 저장하시겠습니까?')) {
     return;
   }
@@ -3043,7 +3124,7 @@ function saveForm() {
   }
   if (!saveData()) return;
   const wasNew = !editingId;
-  closeForm();
+  closeForm(true);
   renderCurrent();
   showSnackbar(wasNew ? '✓ 신규 요청서가 저장되었습니다.' : '✓ 저장되었습니다.');
 }
@@ -3068,7 +3149,7 @@ function deleteItem() {
     if (linkedNp) { linkedNp.linkedRequestId = backup.id; saveNewProducts(); }
     return;
   }
-  closeForm();
+  closeForm(true);
   renderCurrent();
   showSnackbar(
     `🗑 삭제됨: ${backup.product || backup.fgcode || backup.id}`,
@@ -3953,6 +4034,7 @@ function duplicateItem(id) {
   updateScopeTabs();
   toggleLimitAttach();
   refreshReqSummary();
+  validateAllNum(); // 복제된 측정값에 숫자 오류가 있으면 표시
   showSnackbar('📑 복제 완료 · 노란색 표시 항목(날짜·배치·판정값·서명·메모)을 새로 입력해주세요. 첨부 파일은 새로 업로드 필요.', null, 7000);
 }
 
@@ -5469,13 +5551,23 @@ function viewLinkedRequest(npId) {
 })();
 
 // Close any open modal with ESC, or by clicking the backdrop outside the modal.
+// 요청서 폼은 미저장 변경이 있으면 closeForm()이 확인을 거치도록 라우팅.
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-bg.active').forEach(m => m.classList.remove('active'));
+    if (isFormOpen()) closeForm();
+    document.querySelectorAll('.modal-bg.active').forEach(m => { if (m.id !== 'form-modal') m.classList.remove('active'); });
   }
 });
 document.querySelectorAll('.modal-bg').forEach(m => {
-  m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('active'); });
+  m.addEventListener('click', (e) => {
+    if (e.target !== m) return;
+    if (m.id === 'form-modal') closeForm();
+    else m.classList.remove('active');
+  });
+});
+// 미저장 상태로 페이지 이탈(새로고침·탭 닫기·이동) 시 브라우저 경고
+window.addEventListener('beforeunload', (e) => {
+  if (formDirty && isFormOpen()) { e.preventDefault(); e.returnValue = ''; }
 });
 </script>
 </body>
