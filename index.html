@@ -2143,6 +2143,8 @@ function onNewmatChange() {
 
 // A: 위험도 자동 추천 — 신규성 체크 개수 기반. 사용자가 직접 고르면(riskTouched) 더 이상 덮어쓰지 않음.
 let riskTouched = false;
+// 신제품 평가에서 확정된 위험도로 승격된 건 — 신규성 권장 힌트 대신 확정값 안내를 표시
+let riskFromEval = false;
 function noveltyCount() {
   return NOVELTY_ITEMS.reduce((n, it) => { const c = document.getElementById('c-'+it.key); return n + (c && c.checked ? 1 : 0); }, 0);
 }
@@ -2156,6 +2158,10 @@ function markRiskTouched() { riskTouched = true; updateRiskHint(); }
 function updateRiskHint() {
   const hint = document.getElementById('risk-suggest-hint');
   if (!hint) return;
+  if (riskFromEval) {
+    hint.textContent = '🎯 신제품 위험도 평가(3슬롯 최대값)에서 확정된 값입니다 — 변경 시 평가 결과와 달라집니다.';
+    return;
+  }
   const rec = recommendedRisk(noveltyCount());
   hint.textContent = rec ? `💡 신규성 ${noveltyCount()}건 기준 권장 위험도: ${riskLabel(rec)}` : '';
 }
@@ -2851,6 +2857,7 @@ function openForm() {
   document.getElementById('btn-delete').style.display = 'none';
   clearForm();
   riskTouched = false;
+  riskFromEval = false;
   syncCheckItemHighlights();
   updateRiskHint();
   onBulktypeChange();
@@ -2956,6 +2963,9 @@ function editItem(id) {
   syncCheckItemHighlights();
   // 기존 위험도가 있으면 작성자가 정한 값으로 보고 자동 추천이 덮어쓰지 않게 함
   riskTouched = !!(r.risk);
+  // 신제품 평가에서 승격된 건이면 신규성 권장 힌트 대신 확정값 안내
+  const linkedNpEdit = r.newProductId ? newProducts.find(n => n.id === r.newProductId) : null;
+  riskFromEval = !!(linkedNpEdit && computeFinalRisk(linkedNpEdit));
   updateRiskHint();
   onBulktypeChange();
   writeExportToForm(r.xp || null);
@@ -4057,8 +4067,9 @@ function duplicateItem(id) {
     if (el) el.checked = !!src['chk_'+c];
   });
   syncCheckItemHighlights();
-  // 복제된 위험도를 보존(자동 추천이 덮어쓰지 않게)
+  // 복제된 위험도를 보존(자동 추천이 덮어쓰지 않게). 복제본은 신제품 링크가 없으므로 평가 확정 안내는 해제.
   riskTouched = !!(src.risk);
+  riskFromEval = false;
   updateRiskHint();
   onBulktypeChange();
   // Don't carry over attached files on duplicate — each new request needs fresh docs
@@ -5566,6 +5577,14 @@ function promoteNewProductToRequest(npId) {
   // 신제품 평가 4단계 표기('심각') → 요청서 위험도 체계('매우높음')로 매핑
   const reqRisk = finalLevel === '심각' ? '매우높음' : (finalLevel || '');
   const nv = np.novelty || {};
+  // 승격자 이름은 역할에 맞는 담당 필드로 (prefillFormFromProfile과 동일 규칙) — 영업담당은 마케팅/해외영업만
+  const staff = { sales: '', ri: '', pd: '', qa: '' };
+  if (profile.name) {
+    if (isRole(ROLE_AUTHOR) && (isDept('marketing') || isDept('overseas'))) staff.sales = profile.name;
+    else if (isRole(ROLE_AUTHOR) && isDept('ri')) staff.ri = profile.name;
+    else if (isRole(ROLE_REVIEWER) && isDept('pd')) staff.pd = profile.name;
+    else if (isRole(ROLE_REVIEWER) && isDept('qa')) staff.qa = profile.name;
+  }
   const rid = genId();
   const fresh = {
     id: rid,
@@ -5579,7 +5598,10 @@ function promoteNewProductToRequest(npId) {
     product: np.productName || '',
     launch: np.launchDate || '',
     dept: profile.dept ? deptLabel(profile.role, profile.dept) : '',
-    sales: profile.name || '',
+    sales: staff.sales,
+    ri: staff.ri,
+    pd: staff.pd,
+    qa: staff.qa,
     risk: reqRisk,
     status: 'pending',
     pilotstatus: '예정',
@@ -5591,7 +5613,7 @@ function promoteNewProductToRequest(npId) {
     chk_newmaterial: !!nv.newmaterial,
     chk_newfill: !!nv.newfill,
     memo: [
-      '【신제품 리스트에서 자동 생성】',
+      `【신제품 리스트에서 자동 생성】${authorTag() ? ` 승격: ${authorTag()}` : ''}`,
       np.category ? `카테고리: ${np.category}` : '',
       np.formType ? `제형 타입: ${np.formType}` : '',
       np.note ? `등록 메모: ${np.note}` : '',
