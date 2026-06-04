@@ -1,0 +1,13 @@
+version: 1.0
+runtime: nodejs22
+build:
+  commands:
+    build:
+      # INPMS는 빌드가 필요 없는 단일 HTML 정적 사이트.
+      # 정적 파일 서버(serve)만 전역 설치한다.
+      - npm install -g serve
+run:
+  # -s: SPA 모드(모든 경로를 index.html로 라우팅), -l: 수신 포트
+  command: serve -s . -l 8080
+  network:
+    port: 8080
