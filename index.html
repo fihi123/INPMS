@@ -136,19 +136,19 @@
   tbody tr:last-child td { border-bottom: none; }
   tr:hover { background: var(--bg-subtle); }
 
-  /* Badges — flatter with subtle borders */
-  .badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; border: 1px solid transparent; line-height: 1.5; }
-  .b-pending { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+  /* Badges — soft pills with subtle borders */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid transparent; line-height: 1.45; letter-spacing: -0.01em; white-space: nowrap; vertical-align: middle; }
+  .b-pending { background: var(--bg-subtle); color: var(--text-secondary); border-color: var(--border-strong); }
   .b-progress { background: var(--info-soft); color: var(--info-text); border-color: var(--info-border); }
   .b-done { background: var(--success-soft); color: #047857; border-color: var(--success-border); }
   .b-issue { background: var(--danger-soft); color: #b91c1c; border-color: var(--danger-border); }
   .b-urgent { background: var(--warning-soft); color: #b45309; border-color: var(--warning-border); }
-  .b-normal { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+  .b-normal { background: var(--bg-subtle); color: var(--text-secondary); border-color: var(--border-strong); }
   .b-critical { background: #fef2f2; color: #991b1b; border-color: #fca5a5; }
   .b-scope-both { background: #f0fdfa; color: #0f766e; border-color: #99f6e4; }
   .b-scope-bulk { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
   .b-scope-fill { background: #faf5ff; color: #6b21a8; border-color: #e9d5ff; }
-  .b-pilot-scheduled { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+  .b-pilot-scheduled { background: var(--bg-subtle); color: var(--text-secondary); border-color: var(--border-strong); }
   .b-pilot-inprogress { background: var(--info-soft); color: var(--info-text); border-color: var(--info-border); }
   .b-pilot-done { background: var(--success-soft); color: #047857; border-color: var(--success-border); }
   .b-pilot-stopped { background: var(--danger-soft); color: #991b1b; border-color: #fca5a5; }
@@ -191,8 +191,8 @@
   /* Section — softer surface inside modal */
   .section { background: var(--bg-surface); border: 1px solid var(--border); border-left: 2px solid var(--accent); padding: 14px 16px; margin-bottom: 12px; border-radius: var(--radius-sm); }
   .section-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-  .section-title .new-badge { background: var(--danger); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: var(--radius-sm); font-weight: 600; }
-  .section-title .pd-badge { background: var(--accent); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: var(--radius-sm); font-weight: 600; }
+  .section-title .new-badge { background: var(--danger); color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  .section-title .pd-badge { background: var(--info); color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
 
   .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
   .form-grid.col-3 { grid-template-columns: 1fr 1fr 1fr; }
@@ -240,10 +240,10 @@
   .detail-row .val { color: var(--text-primary); }
 
   /* Tabs in modal */
-  .modal-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 14px; flex-wrap: wrap; }
-  .modal-tab { padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 500; color: var(--text-muted); font-size: 13px; }
-  .modal-tab:hover { color: var(--accent); }
-  .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .modal-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 14px; flex-wrap: wrap; gap: 2px; }
+  .modal-tab { padding: 9px 15px; cursor: pointer; border-bottom: 2px solid transparent; font-weight: 500; color: var(--text-muted); font-size: 13px; border-radius: 8px 8px 0 0; margin-bottom: -1px; transition: color .15s, background .15s, border-color .15s; }
+  .modal-tab:hover { color: var(--text-primary); background: var(--bg-subtle); }
+  .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; background: var(--accent-soft); }
   .modal-tab.dimmed { opacity: 0.45; font-style: italic; }
 
   .hint { font-size: 11px; color: var(--text-faint); margin-top: 3px; }
@@ -864,7 +864,7 @@
           </div>
         </div>
         <div class="section" id="section-export" style="display:none;">
-          <div class="section-title">🌍 수출 정보 <span class="pd-badge" style="background:#dbeafe; color:#1e40af;">해외영업</span></div>
+          <div class="section-title">🌍 수출 정보 <span class="pd-badge">해외영업</span></div>
           <div class="hint-info">💡 수출 대상 제품은 국가별 인허가 요건을 확인하세요.</div>
           <div class="form-grid col-3">
             <div class="form-row"><label>수출 국가/지역</label><input type="text" id="f-xp-countries" placeholder="예: 중국, 베트남, EU"></div>
