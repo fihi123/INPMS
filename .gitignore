@@ -1,3 +1,10 @@
 .claude/
 *.swp
 .DS_Store
+
+# 백엔드 로컬 개발
+.venv/
+__pycache__/
+*.pyc
+*.db
+.env

@@ -1,13 +1,16 @@
 version: 1.0
-runtime: nodejs22
+runtime: python311
 build:
   commands:
     build:
-      # INPMS는 빌드가 필요 없는 단일 HTML 정적 사이트.
-      # 정적 파일 서버(serve)만 전역 설치한다.
-      - npm install -g serve
+      - pip install -r server/requirements.txt
 run:
-  # -s: SPA 모드(모든 경로를 index.html로 라우팅), -l: 수신 포트
-  command: serve -s . -l 8080
+  # FastAPI 앱이 정적 프론트엔드(index.html)와 REST API(/api/*)를 함께 서빙.
+  # DATABASE_URL 미설정 시에도 부팅 → 정적 페이지 동작, /api/* 만 503 (선배포 가능).
+  command: uvicorn server.main:app --host 0.0.0.0 --port 8080
   network:
     port: 8080
+  # ---- DB 연결 (I&S 에게 RDS Postgres 신청 → Secrets Manager ARN 수령 후 주석 해제) ----
+  # secrets:
+  #   - name: DATABASE_URL
+  #     value-from: "arn:aws:secretsmanager:ap-northeast-2:<account>:secret:inpms-db-xxxxxx"
