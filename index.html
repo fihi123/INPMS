@@ -1415,6 +1415,18 @@
         <div class="form-row"><label>발매 예정일</label>
           <input type="date" id="np-launchDate">
         </div>
+        <div class="form-row"><label>제형 타입</label>
+          <input type="text" id="np-formType" placeholder="예: O/W 에멀전, 스틱, 쿠션" maxlength="120">
+          <span class="hint">위험도 평가 시 참고됩니다.</span>
+        </div>
+        <div class="form-row full"><label>신규 요소</label>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;padding:6px 0;">
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;"><input type="checkbox" id="np-nv-newform"> 신규 제형</label>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;"><input type="checkbox" id="np-nv-newmaterial"> 신규 원료·자재</label>
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;"><input type="checkbox" id="np-nv-newfill"> 신규 충진/포장</label>
+          </div>
+          <span class="hint">평가 화면에 표시되며, 시생산 요청서 작성 시 신규성 체크로 자동 이관됩니다.</span>
+        </div>
         <div class="form-row full"><label>등록 주차 <span class="req">*</span></label>
           <input type="week" id="np-weekKey">
           <span class="hint">ISO 주차. 신제품 리스트 탭에서 선택한 주차가 기본값입니다.</span>
@@ -1726,6 +1738,11 @@ function renderProfileBanner() {
   el.style.display = '';
 }
 
+// 과거 승격 건에 신제품 평가 표기('심각')로 저장된 위험도를 요청서 체계('매우높음')로 통일
+function migrateRequestRisk(list) {
+  (list || []).forEach(r => { if (r && r.risk === '심각') r.risk = '매우높음'; });
+}
+
 async function loadData() {
   loadMeta();
   // 1) 백엔드가 살아있으면 서버 데이터(첨부 포함)를 우선 로드 → API 모드
@@ -1734,6 +1751,7 @@ async function loadData() {
     if (server) {
       requests = Array.isArray(server.requests) ? server.requests : [];
       newProducts = Array.isArray(server.newProducts) ? server.newProducts : [];
+      migrateRequestRisk(requests);
       // 오프라인 캐시로 localStorage 미러링 (실패해도 무시)
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
@@ -1754,6 +1772,7 @@ async function loadData() {
     }
   }
   if (!Array.isArray(requests)) requests = [];
+  migrateRequestRisk(requests);
   loadNewProducts();
   // 처음 진입 시 저장 — schemaVersion 갱신 등
   if (!localStorage.getItem(STORAGE_KEY)) saveData();
@@ -3113,6 +3132,8 @@ function saveForm() {
   data.status = deriveStatus(data.status, data.richeck, data.pdcheck);
 
   const prevRec = editingId ? requests.find(r => r.id === editingId) : null;
+  // 신제품 리스트에서 승격된 요청서의 연결(newProductId)은 편집해도 유지
+  if (prevRec && prevRec.newProductId) data.newProductId = prevRec.newProductId;
   const newMeta = stampSectionMeta(prevRec, data);
   if (Object.keys(newMeta).length) data.sectionMeta = newMeta;
   data.history = appendHistory(prevRec, data);
@@ -3680,6 +3701,27 @@ function viewDetail(id) {
     : '<div class="detail-row"><div class="key">신규성</div><div class="val" style="color:#94a3b8">해당 없음</div></div>';
   const attendList = ATTEND_ITEMS.filter(it => r['chk_'+it.key]).map(it => `${esc(it.label)}${r[it.name] ? ' (' + esc(r[it.name]) + ')' : ''}`).join(', ');
   const attendRow = `<div class="detail-row"><div class="key">유관부서 참석</div><div class="val">${attendList || '<span style="color:#94a3b8">미체크</span>'}</div></div>`;
+  // 승격 원본 신제품의 3슬롯 위험도 평가 내역 (읽기전용) — 위험도 근거 추적용
+  const linkedNp = r.newProductId ? newProducts.find(n => n.id === r.newProductId) : null;
+  let npRiskSection = '';
+  if (linkedNp) {
+    const npFinal = computeFinalRisk(linkedNp);
+    const slotRows = RISK_SLOTS.map(s => {
+      const v = linkedNp.risk?.[s.key];
+      if (!v || !v.level) return `<div class="detail-row"><div class="key">${esc(s.label)}</div><div class="val" style="color:#94a3b8">미평가</div></div>`;
+      return `<div class="detail-row"><div class="key">${esc(s.label)}</div><div class="val">
+        <span class="badge ${riskLevelBadge(v.level)}">${esc(riskLevelLabel(v.level))}</span>
+        <span style="font-size:11px;color:#64748b;">${v.by ? ` ✍ ${esc(v.by)}` : ''}${v.at ? ` · ${esc(v.at.slice(0,10))}` : ''}</span>
+        ${v.comment ? `<div style="margin-top:4px;white-space:pre-wrap;font-size:12px;">${esc(v.comment)}</div>` : ''}
+      </div></div>`;
+    }).join('');
+    npRiskSection = `
+    <div class="section">
+      <div class="section-title">🎯 신제품 위험도 평가 내역 <span style="font-size:11px;color:#64748b;font-weight:400;">(${esc(linkedNp.weekKey || '-')} 주차 등록분 · 읽기전용)</span></div>
+      ${slotRows}
+      ${npFinal ? `<div class="detail-row"><div class="key">최종 (자동 max)</div><div class="val"><span class="badge ${riskLevelBadge(npFinal)}">${esc(riskLevelLabel(npFinal))}</span></div></div>` : ''}
+    </div>`;
+  }
   body.innerHTML = `
     <div class="section">
       <div class="section-title">📌 문서 관리 / 요청 정보</div>
@@ -3691,6 +3733,7 @@ function viewDetail(id) {
       ${scopeRow}
       ${rowHtml('상태', `<span class="badge ${statusBadge(r.status)}">${statusLabel(r.status)}</span>`)}
     </div>
+    ${npRiskSection}
     <div class="section">
       <div class="section-title">👥 프로젝트</div>
       ${row('고객사', r.client)}${row('브랜드', r.brand)}${row('프로젝트명', r.project)}
@@ -4120,6 +4163,12 @@ function sanitizeNewProduct(np) {
     customer: typeof np.customer === 'string' ? np.customer.slice(0, 120) : '',
     category: typeof np.category === 'string' ? np.category.slice(0, 80) : '',
     launchDate: typeof np.launchDate === 'string' ? np.launchDate.slice(0, 20) : '',
+    formType: typeof np.formType === 'string' ? np.formType.slice(0, 120) : '',
+    novelty: {
+      newform: !!np.novelty?.newform,
+      newmaterial: !!np.novelty?.newmaterial,
+      newfill: !!np.novelty?.newfill
+    },
     note: typeof np.note === 'string' ? np.note.slice(0, 2000) : '',
     inputBy: (np.inputBy && typeof np.inputBy === 'object') ? {
       name: typeof np.inputBy.name === 'string' ? np.inputBy.name.slice(0, 60) : '',
@@ -4169,6 +4218,8 @@ function sanitizeImportRecord(r) {
   IMPORT_DOC_FIELDS.forEach(k => { clean[k] = safeDocData(r[k]) || null; });
   // id: regenerate if not matching /^R\d+$/
   if (typeof clean.id !== 'string' || !/^R\d+$/.test(clean.id)) clean.id = genId();
+  // 위험도 표기 통일: 과거 백업의 '심각' → '매우높음'
+  if (clean.risk === '심각') clean.risk = '매우높음';
   // newProductId: drop if not matching /^N\d+$/
   if (clean.newProductId && !/^N\d+$/.test(clean.newProductId)) clean.newProductId = '';
   // updates: array of sanitized entries
@@ -5223,6 +5274,11 @@ function openNewProductForm(id) {
   document.getElementById('np-customer').value = np?.customer || '';
   document.getElementById('np-category').value = np?.category || '';
   document.getElementById('np-launchDate').value = np?.launchDate || '';
+  document.getElementById('np-formType').value = np?.formType || '';
+  const nvSaved = np?.novelty || {};
+  document.getElementById('np-nv-newform').checked = !!nvSaved.newform;
+  document.getElementById('np-nv-newmaterial').checked = !!nvSaved.newmaterial;
+  document.getElementById('np-nv-newfill').checked = !!nvSaved.newfill;
   document.getElementById('np-weekKey').value = np?.weekKey || currentWeekKey || isoWeekKey(new Date());
   document.getElementById('np-note').value = np?.note || '';
   document.getElementById('np-form-modal').classList.add('active');
@@ -5244,6 +5300,12 @@ function saveNewProductForm() {
     customer: document.getElementById('np-customer').value.trim(),
     category: document.getElementById('np-category').value,
     launchDate: document.getElementById('np-launchDate').value,
+    formType: document.getElementById('np-formType').value.trim(),
+    novelty: {
+      newform: document.getElementById('np-nv-newform').checked,
+      newmaterial: document.getElementById('np-nv-newmaterial').checked,
+      newfill: document.getElementById('np-nv-newfill').checked
+    },
     weekKey,
     note: document.getElementById('np-note').value.trim()
   };
@@ -5344,7 +5406,14 @@ function openRiskModal(npId, forcedSlot) {
   body.innerHTML = `
     <div style="background:var(--bg-subtle);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:14px;font-size:13px;">
       <div><strong>${esc(np.productName)}</strong>${np.brand?` · ${esc(np.brand)}`:''}${np.customer?` · ${esc(np.customer)}`:''}</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">주차 ${esc(np.weekKey)}${np.category?` · ${esc(np.category)}`:''}${np.launchDate?` · 발매 ${esc(np.launchDate)}`:''}</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">주차 ${esc(np.weekKey)}${np.category?` · ${esc(np.category)}`:''}${np.formType?` · 제형 ${esc(np.formType)}`:''}${np.launchDate?` · 발매 ${esc(np.launchDate)}`:''}</div>
+      ${(np.novelty && (np.novelty.newform || np.novelty.newmaterial || np.novelty.newfill)) ? `
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+        ${np.novelty.newform ? '<span class="badge b-urgent">신규 제형</span>' : ''}
+        ${np.novelty.newmaterial ? '<span class="badge b-urgent">신규 원료·자재</span>' : ''}
+        ${np.novelty.newfill ? '<span class="badge b-urgent">신규 충진/포장</span>' : ''}
+      </div>` : ''}
+      ${np.note ? `<div style="font-size:11px;color:var(--text-secondary);margin-top:6px;white-space:pre-wrap;">📝 ${esc(np.note)}</div>` : ''}
     </div>
     <div class="form-row" style="margin-bottom:12px;">
       <label><strong>평가 슬롯</strong></label>
@@ -5494,6 +5563,9 @@ function promoteNewProductToRequest(npId) {
   if (!confirm(`"${np.productName}"을(를) 시생산 요청서로 작성하시겠습니까?\n신제품 정보가 새 요청서에 자동 채워집니다.`)) return;
   const today = new Date().toISOString().substring(0,10);
   const finalLevel = computeFinalRisk(np);
+  // 신제품 평가 4단계 표기('심각') → 요청서 위험도 체계('매우높음')로 매핑
+  const reqRisk = finalLevel === '심각' ? '매우높음' : (finalLevel || '');
+  const nv = np.novelty || {};
   const rid = genId();
   const fresh = {
     id: rid,
@@ -5508,13 +5580,20 @@ function promoteNewProductToRequest(npId) {
     launch: np.launchDate || '',
     dept: profile.dept ? deptLabel(profile.role, profile.dept) : '',
     sales: profile.name || '',
-    risk: finalLevel || '',
+    risk: reqRisk,
     status: 'pending',
     pilotstatus: '예정',
-    richeck: np.risk?.rnd?.comment ? '완료' : '대기',
-    pdcheck: (np.risk?.process?.comment || np.risk?.quality?.comment) ? '완료' : '대기',
+    // 검토(richeck/pdcheck)는 요청서 내용 확인 단계 — 위험도 평가 코멘트와 무관하게 검토자가 직접 처리
+    richeck: '대기',
+    pdcheck: '대기',
+    // 신제품 단계에서 체크한 신규 요소 → 요청서 신규성 체크로 이관 (상세 내용은 작성자가 보완)
+    chk_newform: !!nv.newform,
+    chk_newmaterial: !!nv.newmaterial,
+    chk_newfill: !!nv.newfill,
     memo: [
       '【신제품 리스트에서 자동 생성】',
+      np.category ? `카테고리: ${np.category}` : '',
+      np.formType ? `제형 타입: ${np.formType}` : '',
       np.note ? `등록 메모: ${np.note}` : '',
       np.risk?.rnd?.comment ? `R&D(${np.risk.rnd.level}): ${np.risk.rnd.comment}` : '',
       np.risk?.process?.comment ? `공정(${np.risk.process.level}): ${np.risk.process.comment}` : '',
